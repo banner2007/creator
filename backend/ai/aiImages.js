@@ -281,7 +281,7 @@ router.post('/generate', requireAuth, async (req, res) => {
 
     if (dbError) {
       console.error('[AI Gen] Failed to save generated images in DB:', dbError);
-      return res.status(500).json({ error: 'Imágenes creadas pero falló el registro en la base de datos.', images: generatedUrls });
+      return res.status(500).json({ error: `Imágenes creadas pero falló el registro en la base de datos: ${dbError.message || JSON.stringify(dbError)}`, images: generatedUrls });
     }
 
     // 4. Log Action
