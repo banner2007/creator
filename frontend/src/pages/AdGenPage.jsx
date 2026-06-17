@@ -308,6 +308,7 @@ export default function AdGenPage() {
   const [engine, setEngine] = useState('kie-ai'); // kie-ai or openai
   const [customStyleEnabled, setCustomStyleEnabled] = useState(false);
   const [customStyle, setCustomStyle] = useState('');
+  const [calidad, setCalidad] = useState('medio');
 
   // Pagination & Search State (inside template selection modal)
   const [searchQuery, setSearchQuery] = useState('');
@@ -410,7 +411,8 @@ export default function AdGenPage() {
       selectedProject.id,
       engine,
       refImageUrl,
-      productImages[0] // Pass primary product image URL
+      productImages[0], // Pass primary product image URL
+      calidad
     );
 
     if (results && results.length > 0) {
@@ -949,7 +951,7 @@ export default function AdGenPage() {
         </div>
 
         {/* Dropdowns Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
           {/* Format selector */}
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
@@ -982,6 +984,23 @@ export default function AdGenPage() {
               <option value="es">Español</option>
               <option value="en">Inglés</option>
               <option value="pt">Portugués</option>
+            </select>
+          </div>
+
+          {/* Quality selector */}
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <Sliders className="w-3.5 h-3.5 text-purple-400" />
+              <span>Calidad de la imagen</span>
+            </label>
+            <select 
+              value={calidad} 
+              onChange={e => setCalidad(e.target.value)}
+              className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-4 py-3 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
+            >
+              <option value="bajo">Bajo (Generación rápida)</option>
+              <option value="medio">Medio (Recomendado)</option>
+              <option value="alto">Alto (Calidad profesional)</option>
             </select>
           </div>
         </div>

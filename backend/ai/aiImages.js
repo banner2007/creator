@@ -22,7 +22,8 @@ const generateSchema = z.object({
   projectId: z.string().uuid(),
   engine: z.enum(['kie-ai', 'openai']).default('kie-ai'),
   referenceImage: z.string().optional(),
-  productImage: z.string().optional()
+  productImage: z.string().optional(),
+  calidad: z.enum(['bajo', 'medio', 'alto']).default('medio')
 });
 
 /**
@@ -172,7 +173,15 @@ router.post('/generate', requireAuth, async (req, res) => {
         if (useRealKie) {
           try {
             // Build rich prompt for Kie.ai Flux Kontext style transfer
-            let prompt = `A premium professional commercial product photo of ${validated.producto}, styled in a ${validated.estilo} theme, studio lighting, photorealistic, 8k, product advertisement, highly detailed.`;
+            let prompt = `A premium professional commercial product photo of ${validated.producto}, styled in a ${validated.estilo} theme, studio lighting, photorealistic, product advertisement, highly detailed.`;
+            if (validated.calidad === 'bajo') {
+              prompt += ` Draft quality, simple details, quick capture.`;
+            } else if (validated.calidad === 'alto') {
+              prompt += ` Ultra high quality, professional commercial photography, 8k resolution, masterfully lit, award-winning advertisement look, photorealistic, sharp focus.`;
+            } else {
+              prompt += ` Medium quality, standard studio commercial lighting.`;
+            }
+
             if (validated.referenceImage) {
               prompt += ` Match composition, background colors and style of the reference image: ${validated.referenceImage}.`;
             }
@@ -217,7 +226,14 @@ router.post('/generate', requireAuth, async (req, res) => {
       } else {
         // OpenAI gpt-image-2 generation
         try {
-          const dallePrompt = `A high-end commercial ad banner for ${validated.producto}. Theme: ${validated.estilo}. Studio lighting, professional layout, clean design, highly detailed, centered product focus, commercial photography, 8k resolution.`;
+          let dallePrompt = `A high-end commercial ad banner for ${validated.producto}. Theme: ${validated.estilo}. Studio lighting, professional layout, clean design, highly detailed, centered product focus, commercial photography.`;
+          if (validated.calidad === 'bajo') {
+            dallePrompt += ` Draft quality, simple background.`;
+          } else if (validated.calidad === 'alto') {
+            dallePrompt += ` Ultra high quality, professional studio setup, 8k resolution, award-winning commercial layout, masterfully lit, photorealistic, extremely sharp focus.`;
+          } else {
+            dallePrompt += ` Medium quality, standard studio lighting.`;
+          }
           const rawUrl = await generateOpenAIImage(dallePrompt, validated.formato);
           finalUrl = await uploadToSupabase(rawUrl, validated.projectId);
         } catch (err) {
