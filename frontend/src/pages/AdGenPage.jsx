@@ -369,11 +369,15 @@ export default function AdGenPage() {
   // Prepopulate Product Images on product selection
   useEffect(() => {
     if (selectedProductForGen) {
-      setProductImages([
-        selectedProductForGen.cover_image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80',
-        '',
-        ''
-      ]);
+      if (selectedProductForGen.id === 'new') {
+        setProductImages(['', '', '']);
+      } else {
+        setProductImages([
+          selectedProductForGen.cover_image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80',
+          '',
+          ''
+        ]);
+      }
       setSuccessImages([]);
     }
   }, [selectedProductForGen]);
@@ -389,6 +393,41 @@ export default function AdGenPage() {
       return;
     }
 
+    let currentProduct = selectedProductForGen;
+
+    // If it's a new product, we need to register it first
+    if (selectedProductForGen.id === 'new') {
+      if (!newProdName.trim()) {
+        alert('Por favor ingresa el nombre del producto.');
+        return;
+      }
+      if (!newProdDescription.trim()) {
+        alert('Por favor ingresa la descripción del producto.');
+        return;
+      }
+      
+      setIsSavingProduct(true);
+      const payload = {
+        name: newProdName,
+        description: newProdDescription,
+        price: parseFloat(newProdPrice) || 0,
+        category: newProdCategory,
+        cover_image: productImages[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80',
+        status: 'active'
+      };
+
+      const newProd = await createProduct(payload);
+      setIsSavingProduct(false);
+
+      if (!newProd) {
+        return; // createProduct store logic already shows alerts on error
+      }
+
+      currentProduct = newProd;
+      setSelectedProductForGen(newProd);
+      fetchProducts();
+    }
+
     let refImageUrl = '';
     if (customImage.trim()) {
       refImageUrl = customImage.trim();
@@ -398,7 +437,7 @@ export default function AdGenPage() {
     }
 
     // Build prompt for AI model
-    let promptText = `Product: ${selectedProductForGen.name}. Description: ${selectedProductForGen.description}. Style context: referencing selected composition template.`;
+    let promptText = `Product: ${currentProduct.name}. Description: ${currentProduct.description}. Style context: referencing selected composition template.`;
     if (customStyle.trim()) {
       promptText += ` Additional style directions: ${customStyle}`;
     }
@@ -468,7 +507,8 @@ export default function AdGenPage() {
     setSlotUploading(newUploading);
     
     try {
-      const fileName = `products/${selectedProductForGen.id}-${index}-${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+      const productId = selectedProductForGen.id === 'new' ? `temp-${Date.now()}` : selectedProductForGen.id;
+      const fileName = `products/${productId}-${index}-${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
       const storageRef = ref(storage, fileName);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
@@ -503,33 +543,13 @@ export default function AdGenPage() {
     document.body.removeChild(element);
   };
 
-  const handleCreateProductSubmit = async (e) => {
-    e.preventDefault();
-    setIsSavingProduct(true);
-
-    const payload = {
-      name: newProdName,
-      description: newProdDescription,
-      price: parseFloat(newProdPrice) || 0,
-      category: newProdCategory,
-      cover_image: newProdCoverImage || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80',
-      status: 'active'
-    };
-
-    const newProd = await createProduct(payload);
-    setIsSavingProduct(false);
-    
-    if (newProd) {
-      setShowCreateModal(false);
-      fetchProducts();
-      setSelectedProductForGen(newProd);
-    }
-  };
-
   // Filter history banners for selected product
   const productBanners = selectedProductForGen 
-    ? generatedImages.filter(img => 
-        img.prompt && selectedProductForGen.name && img.prompt.toLowerCase().includes(selectedProductForGen.name.toLowerCase())
+    ? (selectedProductForGen.id === 'new'
+      ? []
+      : generatedImages.filter(img => 
+          img.prompt && selectedProductForGen.name && img.prompt.toLowerCase().includes(selectedProductForGen.name.toLowerCase())
+        )
       )
     : [];
 
@@ -632,7 +652,14 @@ export default function AdGenPage() {
               setNewProdCategory('');
               setNewProdDescription('');
               setNewProdCoverImage('');
-              setShowCreateModal(true);
+              setSelectedProductForGen({
+                id: 'new',
+                name: '',
+                description: '',
+                price: '',
+                category: '',
+                cover_image: ''
+              });
             }}
             className="glass-panel border-2 border-dashed border-white/10 hover:border-purple-500/50 hover:bg-purple-500/[0.02] rounded-3xl p-6 flex flex-col items-center justify-center min-h-[320px] text-center cursor-pointer transition-all duration-300 group"
           >
@@ -647,103 +674,6 @@ export default function AdGenPage() {
             </p>
           </div>
         </div>
-
-        {/* Create Product Modal */}
-        {showCreateModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-            <div className="w-full max-w-lg glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 relative max-h-[90vh] overflow-y-auto">
-              <h3 className="text-xl font-bold mb-2">Agregar Nuevo Producto</h3>
-              <p className="text-xs text-slate-400 mb-6">
-                Esta información será leída por la IA para diseñar anuncios persuasivos y redactar copys.
-              </p>
-              
-              <form onSubmit={handleCreateProductSubmit} className="space-y-5">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-400">Nombre del Producto</label>
-                  <input 
-                    type="text" 
-                    placeholder="Ej: Cobija piel de conejo" 
-                    className="glass-input"
-                    value={newProdName}
-                    onChange={e => setNewProdName(e.target.value)}
-                    required 
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-400">Precio de Venta ($)</label>
-                    <div className="relative flex items-center">
-                      <DollarSign className="w-4 h-4 text-slate-500 absolute left-3" />
-                      <input 
-                        type="number" 
-                        step="0.01"
-                        placeholder="0.00" 
-                        className="glass-input pl-9 w-full"
-                        value={newProdPrice}
-                        onChange={e => setNewProdPrice(e.target.value)}
-                        required 
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-slate-400">Categoría</label>
-                    <input 
-                      type="text" 
-                      placeholder="Ej: Hogar, Tecnología" 
-                      className="glass-input"
-                      value={newProdCategory}
-                      onChange={e => setNewProdCategory(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-400">Descripción Comercial (Dolores y Beneficios)</label>
-                  <textarea 
-                    rows="4"
-                    placeholder="Ej: Cobija térmica ultrasuave ideal para invierno. Es antialérgica, ligera y lavable..." 
-                    className="glass-input resize-none"
-                    value={newProdDescription}
-                    onChange={e => setNewProdDescription(e.target.value)}
-                    required 
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-slate-400">URL de Imagen de Portada</label>
-                  <input 
-                    type="text" 
-                    placeholder="https://ejemplo.com/foto-producto.jpg" 
-                    className="glass-input"
-                    value={newProdCoverImage}
-                    onChange={e => setNewProdCoverImage(e.target.value)}
-                  />
-                  <span className="text-[10px] text-slate-500">Deja vacío para usar una imagen genérica por defecto.</span>
-                </div>
-                
-                <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
-                  <button 
-                    type="button" 
-                    className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:bg-white/5 transition-all"
-                    onClick={() => setShowCreateModal(false)}
-                  >
-                    Cancelar
-                  </button>
-                  
-                  <button 
-                    type="submit"
-                    disabled={isSavingProduct}
-                    className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-sm font-semibold text-white transition-all disabled:opacity-50"
-                  >
-                    {isSavingProduct ? 'Guardando...' : 'Registrar Producto'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
@@ -780,10 +710,12 @@ export default function AdGenPage() {
           </button>
           <div>
             <h2 className="text-2xl font-extrabold tracking-tight text-white uppercase break-all">
-              {selectedProductForGen.name}
+              {selectedProductForGen.id === 'new' ? 'Registrar Producto' : selectedProductForGen.name}
             </h2>
             <p className="text-slate-400 mt-1 text-xs font-semibold tracking-wide">
-              Genera Anuncios profesionales para este producto
+              {selectedProductForGen.id === 'new' 
+                ? 'Registra tu producto y genera anuncios profesionales con IA' 
+                : 'Genera Anuncios profesionales para este producto'}
             </p>
           </div>
         </div>
@@ -823,6 +755,63 @@ export default function AdGenPage() {
             <p className="text-xs text-slate-500 mt-0.5">Sube un anuncio de referencia y una foto de tu producto</p>
           </div>
         </div>
+
+        {/* If it's a new product, render the product registration inputs */}
+        {selectedProductForGen.id === 'new' && (
+          <div className="space-y-4 p-5 rounded-2xl bg-purple-950/10 border border-purple-500/10 mb-6">
+            <h4 className="text-[10px] font-extrabold text-purple-300 uppercase tracking-wider">Paso 1: Registrar Información del Producto</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-400">Nombre del Producto</label>
+                <input 
+                  type="text" 
+                  placeholder="Ej: Cobija piel de conejo" 
+                  className="glass-input bg-slate-950/60"
+                  value={newProdName}
+                  onChange={e => setNewProdName(e.target.value)}
+                  required 
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">Precio de Venta ($)</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    placeholder="0.00" 
+                    className="glass-input bg-slate-950/60"
+                    value={newProdPrice}
+                    onChange={e => setNewProdPrice(e.target.value)}
+                    required 
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">Categoría</label>
+                  <input 
+                    type="text" 
+                    placeholder="Ej: Hogar" 
+                    className="glass-input bg-slate-950/60"
+                    value={newProdCategory}
+                    onChange={e => setNewProdCategory(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-slate-400">Descripción Comercial (Dolores y Beneficios)</label>
+              <textarea 
+                rows="3"
+                placeholder="Ej: Cobija térmica ultrasuave ideal para invierno. Es antialérgica, ligera y lavable..." 
+                className="glass-input bg-slate-950/60 resize-none text-xs"
+                value={newProdDescription}
+                onChange={e => setNewProdDescription(e.target.value)}
+                required 
+              />
+            </div>
+          </div>
+        )}
 
         {/* Double Panel Grid (Referencia & Foto del Producto) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
