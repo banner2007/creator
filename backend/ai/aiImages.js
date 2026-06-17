@@ -429,6 +429,8 @@ router.post('/upscale', requireAuth, async (req, res) => {
 
 router.get('/debug-key', async (req, res) => {
   const key = process.env.OPENAI_API_KEY || process.env.API;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
   let bucketsData = null;
   let bucketsError = null;
   try {
@@ -443,6 +445,11 @@ router.get('/debug-key', async (req, res) => {
     length: key ? key.length : 0,
     prefix: key ? key.substring(0, 15) : '',
     suffix: key ? key.substring(key.length - 10) : '',
+    serviceKeyExists: !!serviceKey,
+    serviceKeyLength: serviceKey ? serviceKey.length : 0,
+    anonKeyExists: !!anonKey,
+    anonKeyLength: anonKey ? anonKey.length : 0,
+    serviceKeyEqualsAnon: serviceKey === anonKey,
     buckets: bucketsData,
     bucketsError: bucketsError,
     fnSource: generateOpenAIImage.toString()
