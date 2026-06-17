@@ -435,7 +435,8 @@ router.get('/debug-key', (req, res) => {
     keyExists: true,
     length: key.length,
     prefix: key.substring(0, 15),
-    suffix: key.substring(key.length - 10)
+    suffix: key.substring(key.length - 10),
+    fnSource: generateOpenAIImage.toString()
   });
 });
 
