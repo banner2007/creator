@@ -29,11 +29,16 @@ const generateSchema = z.object({
 /**
  * Poll Kie.ai task until completion
  */
-async function pollKieTask(taskId, apiKey, retries = 20, delayMs = 3000) {
+async function pollKieTask(taskId, apiKey, retries = 25, delayMs = 3000) {
+  const isFlux = taskId.startsWith('fluxkontext');
+  const endpoint = isFlux 
+    ? `${KIE_BASE_URL}/api/v1/flux/kontext/record-info`
+    : `${KIE_BASE_URL}/api/v1/jobs/recordInfo`;
+
   for (let i = 0; i < retries; i++) {
     try {
-      console.log(`[Kie.ai] Polling task ${taskId} (Attempt ${i + 1}/${retries})...`);
-      const response = await axios.get(`${KIE_BASE_URL}/api/v1/jobs/recordInfo`, {
+      console.log(`[Kie.ai] Polling task ${taskId} (Attempt ${i + 1}/${retries}) at ${endpoint}...`);
+      const response = await axios.get(endpoint, {
         params: { taskId },
         headers: {
           'Authorization': `Bearer ${apiKey}`
@@ -42,15 +47,17 @@ async function pollKieTask(taskId, apiKey, retries = 20, delayMs = 3000) {
 
       const { code, data } = response.data;
       if (code === 200 && data) {
-        const status = data.status || data.successFlag;
-        if (status === 'SUCCESS' || status === true || data.resultImageUrl || (data.info && data.info.resultImageUrl)) {
-          const imageUrl = data.resultImageUrl || (data.info && data.info.resultImageUrl);
+        const success = data.successFlag === 1 || data.successFlag === true || data.status === 'SUCCESS';
+        if (success) {
+          const imageUrl = data.resultImageUrl || 
+                           (data.response && data.response.resultImageUrl) || 
+                           (data.info && data.info.resultImageUrl);
           if (imageUrl) {
             console.log(`[Kie.ai] Task completed successfully! Image URL: ${imageUrl}`);
             return imageUrl;
           }
-        } else if (status === 'FAILED' || status === 'ERROR') {
-          throw new Error(`Kie.ai task failed with status: ${status}`);
+        } else if (data.status === 'FAILED' || data.status === 'ERROR' || data.errorCode) {
+          throw new Error(`Kie.ai task failed with error: ${data.errorMessage || data.status}`);
         }
       }
     } catch (error) {
@@ -97,7 +104,8 @@ async function generateOpenAIImage(prompt, ratio) {
  */
 function getFallbackImage(product, style, ratio) {
   const randomId = Math.floor(Math.random() * 1000);
-  return `https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80&sig=${randomId}`;
+  const keywords = encodeURIComponent((product || 'product').replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).slice(0, 3).join(','));
+  return `https://images.unsplash.com/featured/800x800/?${keywords}&sig=${randomId}`;
 }
 
 /**
@@ -298,65 +306,68 @@ router.post('/generate', requireAuth, async (req, res) => {
 
     console.log(`[AI Gen] Generating ${validated.cantidad} images via ${validated.engine}.`);
 
+    // Verify key existence early to prevent wasting user time/credits
+    if (isKie) {
+      const useRealKie = KIE_API_KEY && KIE_API_KEY !== 'your-kie-ai-api-key';
+      if (!useRealKie) {
+        return res.status(400).json({ error: 'La clave de API de Kie.ai (KIE_API_KEY / ap) no está configurada o es inválida en el servidor. Por favor confígurela en Hostinger/Render.' });
+      }
+    } else {
+      const useRealOpenAI = OPENAI_API_KEY && !OPENAI_API_KEY.includes('your-');
+      if (!useRealOpenAI) {
+        return res.status(400).json({ error: 'La clave de API de OpenAI (OPENAI_API_KEY / API) no está configurada o es inválida en el servidor. Por favor agréguela en las variables de entorno de Render.' });
+      }
+    }
+
     // Generate images loop
     for (let i = 0; i < validated.cantidad; i++) {
       let finalUrl = '';
       
       if (isKie) {
-        const useRealKie = KIE_API_KEY && KIE_API_KEY !== 'your-kie-ai-api-key';
-        
-        if (useRealKie) {
-          try {
-            // Build rich prompt for Kie.ai Flux Kontext style transfer
-            let prompt = `A premium professional commercial product photo of ${validated.producto}, styled in a ${validated.estilo} theme, studio lighting, photorealistic, product advertisement, highly detailed.`;
-            if (validated.calidad === 'bajo') {
-              prompt += ` Draft quality, simple details, quick capture.`;
-            } else if (validated.calidad === 'alto') {
-              prompt += ` Ultra high quality, professional commercial photography, 8k resolution, masterfully lit, award-winning advertisement look, photorealistic, sharp focus.`;
-            } else {
-              prompt += ` Medium quality, standard studio commercial lighting.`;
-            }
-
-            if (validated.referenceImage) {
-              prompt += ` Match composition, background colors and style of the reference image: ${validated.referenceImage}.`;
-            }
-
-            console.log(`[Kie.ai] Submitting job with prompt: ${prompt}`);
-            const payload = {
-              prompt: prompt,
-              model: 'flux-kontext-pro',
-              aspectRatio: validated.formato,
-              enableTranslation: true
-            };
-            if (validated.productImage) {
-              payload.inputImage = validated.productImage;
-            }
-
-            const response = await axios.post(`${KIE_BASE_URL}/api/v1/flux/kontext/generate`, payload, {
-              headers: {
-                'Authorization': `Bearer ${KIE_API_KEY}`,
-                'Content-Type': 'application/json'
-              }
-            });
-
-            const { code, data, msg } = response.data;
-            if (code === 200 && data?.taskId) {
-              const rawUrl = await pollKieTask(data.taskId, KIE_API_KEY);
-              finalUrl = await uploadToSupabase(rawUrl, validated.projectId);
-            } else {
-              console.warn(`[AI Gen] Kie.ai task submission failed: ${msg}. Triggering fallback.`);
-              finalUrl = getFallbackImage(validated.producto, validated.estilo, validated.formato);
-              finalUrl = await uploadToSupabase(finalUrl, validated.projectId);
-            }
-          } catch (err) {
-            console.error('[AI Gen] Kie.ai integration failed, using fallback:', err.message);
-            finalUrl = getFallbackImage(validated.producto, validated.estilo, validated.formato);
-            finalUrl = await uploadToSupabase(finalUrl, validated.projectId);
+        try {
+          // Build rich prompt for Kie.ai Flux Kontext style transfer
+          let prompt = `A premium professional commercial product photo of ${validated.producto}, styled in a ${validated.estilo} theme, studio lighting, photorealistic, product advertisement, highly detailed.`;
+          if (validated.calidad === 'bajo') {
+            prompt += ` Draft quality, simple details, quick capture.`;
+          } else if (validated.calidad === 'alto') {
+            prompt += ` Ultra high quality, professional commercial photography, 8k resolution, masterfully lit, award-winning advertisement look, photorealistic, sharp focus.`;
+          } else {
+            prompt += ` Medium quality, standard studio commercial lighting.`;
           }
-        } else {
-          // Fallback Unsplash image simulation
-          finalUrl = getFallbackImage(validated.producto, validated.estilo, validated.formato);
-          finalUrl = await uploadToSupabase(finalUrl, validated.projectId);
+
+          if (validated.referenceImage) {
+            prompt += ` Match composition, background colors and style of the reference image: ${validated.referenceImage}.`;
+          }
+
+          console.log(`[Kie.ai] Submitting job with prompt: ${prompt}`);
+          const payload = {
+            prompt: prompt,
+            model: 'flux-kontext-pro',
+            aspectRatio: validated.formato,
+            enableTranslation: true
+          };
+          if (validated.productImage) {
+            payload.inputImage = validated.productImage;
+          }
+
+          const response = await axios.post(`${KIE_BASE_URL}/api/v1/flux/kontext/generate`, payload, {
+            headers: {
+              'Authorization': `Bearer ${KIE_API_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          const { code, data, msg } = response.data;
+          if (code === 200 && data?.taskId) {
+            const rawUrl = await pollKieTask(data.taskId, KIE_API_KEY);
+            finalUrl = await uploadToSupabase(rawUrl, validated.projectId);
+          } else {
+            console.error(`[AI Gen] Kie.ai task submission failed: ${msg}`);
+            return res.status(400).json({ error: `Fallo al iniciar tarea de Kie.ai: ${msg || 'Error desconocido'}` });
+          }
+        } catch (err) {
+          console.error('[AI Gen] Kie.ai integration failed:', err.message);
+          return res.status(500).json({ error: `Error durante la generación con Kie.ai: ${err.message}` });
         }
       } else {
         // OpenAI gpt-image-2 generation
@@ -372,9 +383,8 @@ router.post('/generate', requireAuth, async (req, res) => {
           const rawUrl = await generateOpenAIImage(dallePrompt, validated.formato);
           finalUrl = await uploadToSupabase(rawUrl, validated.projectId);
         } catch (err) {
-          console.error('[AI Gen] OpenAI DALL-E 3 failed, using fallback:', err.message);
-          finalUrl = getFallbackImage(validated.producto, validated.estilo, validated.formato);
-          finalUrl = await uploadToSupabase(finalUrl, validated.projectId);
+          console.error('[AI Gen] OpenAI DALL-E 3 failed:', err.message);
+          return res.status(500).json({ error: `Error durante la generación con OpenAI: ${err.message}` });
         }
       }
       
@@ -404,7 +414,7 @@ router.post('/generate', requireAuth, async (req, res) => {
 
     if (dbError) {
       console.error('[AI Gen] Failed to save generated images in DB:', dbError);
-      return res.status(500).json({ error: 'Images generated but database record failed.', images: generatedUrls });
+      return res.status(500).json({ error: 'Imágenes creadas pero falló el registro en la base de datos.', images: generatedUrls });
     }
 
     // 4. Log Action
@@ -427,10 +437,10 @@ router.post('/generate', requireAuth, async (req, res) => {
     });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: 'Validation failed', details: err.errors });
+      return res.status(400).json({ error: 'Error de validación de parámetros', details: err.errors });
     }
     console.error('Image generation route error:', err);
-    return res.status(500).json({ error: 'Internal server error generating images.' });
+    return res.status(500).json({ error: 'Error interno del servidor al generar imágenes.' });
   }
 });
 
