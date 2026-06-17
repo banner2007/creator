@@ -156,6 +156,68 @@ router.get('/debug', (req, res) => {
 });
 
 /**
+ * @route   GET /api/ai/test-kie
+ * @desc    Test Kie.ai generation endpoint (safe, no keys leaked)
+ */
+router.get('/test-kie', async (req, res) => {
+  const KIE_API_KEY = process.env.KIE_API_KEY || process.env.ap;
+  if (!KIE_API_KEY) {
+    return res.status(400).json({ error: 'Kie key not configured' });
+  }
+  try {
+    const response = await axios.post(`${KIE_BASE_URL}/api/v1/flux/kontext/generate`, {
+      prompt: 'A test image of a green apple on a desk, photorealistic',
+      model: 'flux-kontext-pro',
+      aspectRatio: '1:1',
+      enableTranslation: true
+    }, {
+      headers: {
+        'Authorization': `Bearer ${KIE_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return res.json({ status: 'success', data: response.data });
+  } catch (err) {
+    return res.status(500).json({
+      status: 'error',
+      message: err.message,
+      response: err.response ? err.response.data : null
+    });
+  }
+});
+
+/**
+ * @route   GET /api/ai/test-openai
+ * @desc    Test OpenAI generation endpoint (safe, no keys leaked)
+ */
+router.get('/test-openai', async (req, res) => {
+  const OPENAI_API_KEY = process.env.OPENAI_API_KEY || process.env.API;
+  if (!OPENAI_API_KEY) {
+    return res.status(400).json({ error: 'OpenAI key not configured' });
+  }
+  try {
+    const response = await axios.post(OPENAI_URL, {
+      model: 'gpt-image-2',
+      prompt: 'A test image of a green apple on a desk, photorealistic',
+      n: 1,
+      size: '1024x1024'
+    }, {
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return res.json({ status: 'success', data: response.data });
+  } catch (err) {
+    return res.status(500).json({
+      status: 'error',
+      message: err.message,
+      response: err.response ? err.response.data : null
+    });
+  }
+});
+
+/**
  * @route   POST /api/ai/generate
  * @desc    Generate commercial product images using Kie.ai or OpenAI DALL-E 3
  */
