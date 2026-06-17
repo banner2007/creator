@@ -60,21 +60,21 @@ async function pollKieTask(taskId, apiKey, retries = 20, delayMs = 3000) {
 }
 
 /**
- * Generate image using OpenAI DALL-E 3
+ * Generate image using OpenAI gpt-image-2 (ChatGPT Imagen 2.0)
  */
-async function generateDalleImage(prompt, ratio) {
+async function generateOpenAIImage(prompt, ratio) {
   if (!OPENAI_API_KEY || OPENAI_API_KEY.includes('your-')) {
     throw new Error('OpenAI API Key is missing or invalid in server config.');
   }
 
-  // Convert ratio to DALL-E 3 format (1024x1024, 1792x1024, or 1024x1792)
+  // Convert ratio to gpt-image-2 format (1024x1024, 1792x1024, or 1024x1792)
   let size = '1024x1024';
   if (ratio === '16:9') size = '1792x1024';
   else if (ratio === '9:16') size = '1024x1792';
 
-  console.log(`[OpenAI DALL-E 3] Requesting image generation, size: ${size}...`);
+  console.log(`[OpenAI gpt-image-2] Requesting image generation, size: ${size}...`);
   const response = await axios.post(OPENAI_URL, {
-    model: 'dall-e-3',
+    model: 'gpt-image-2',
     prompt: prompt,
     n: 1,
     size: size
@@ -86,7 +86,7 @@ async function generateDalleImage(prompt, ratio) {
   });
 
   const url = response.data.data[0].url;
-  console.log(`[OpenAI DALL-E 3] Image generated: ${url}`);
+  console.log(`[OpenAI gpt-image-2] Image generated: ${url}`);
   return url;
 }
 
@@ -209,10 +209,10 @@ router.post('/generate', requireAuth, async (req, res) => {
           finalUrl = await uploadToSupabase(finalUrl, validated.projectId);
         }
       } else {
-        // OpenAI DALL-E 3 generation
+        // OpenAI gpt-image-2 generation
         try {
           const dallePrompt = `A high-end commercial ad banner for ${validated.producto}. Theme: ${validated.estilo}. Studio lighting, professional layout, clean design, highly detailed, centered product focus, commercial photography, 8k resolution.`;
-          const rawUrl = await generateDalleImage(dallePrompt, validated.formato);
+          const rawUrl = await generateOpenAIImage(dallePrompt, validated.formato);
           finalUrl = await uploadToSupabase(rawUrl, validated.projectId);
         } catch (err) {
           console.error('[AI Gen] OpenAI DALL-E 3 failed, using fallback:', err.message);
@@ -235,7 +235,7 @@ router.post('/generate', requireAuth, async (req, res) => {
     const dbRecords = generatedUrls.map(url => ({
       project_id: validated.projectId,
       prompt: validated.producto,
-      model: isKie ? 'flux-kontext-pro' : 'dall-e-3',
+      model: isKie ? 'flux-kontext-pro' : 'gpt-image-2',
       resolution: validated.formato,
       image_url: url
     }));

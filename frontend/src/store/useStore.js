@@ -1,4 +1,52 @@
 import { create } from 'zustand';
+import { storage, ref, listAll, getDownloadURL, uploadBytes, deleteObject } from '../utils/firebase.js';
+
+// Helper function to create compressed thumbnail WebP client-side
+function createThumbnail(file, maxWidth, maxHeight) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        // Resize logic keeping aspect ratio
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        canvas.toBlob(
+          (blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error('Canvas to Blob conversion failed'));
+          },
+          'image/webp',
+          0.75 // 75% quality for 25% WebP thumbnail size
+        );
+      };
+      img.onerror = (err) => reject(err);
+      img.src = event.target.result;
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}
 
 // Helper to set authorization headers
 const getHeaders = (token) => ({
@@ -18,6 +66,10 @@ export const useStore = create((set, get) => ({
   selectedLanding: null,
   sections: [], // Active landing page sections
   products: [],
+  firebaseTemplates: [],
+  templateUrlsCache: {},
+  isLoadingTemplates: false,
+
   selectedProduct: null,
   isResearching: false,
   
@@ -395,6 +447,141 @@ export const useStore = create((set, get) => ({
       set({ isResearching: false });
     }
     return null;
+  },
+
+  // Firebase Storage Template Actions
+  fetchFirebaseTemplates: async () => {
+    // If already loaded templates list, don't list again
+    if (get().firebaseTemplates.length > 0) return;
+    
+    set({ isLoadingTemplates: true });
+    try {
+      const templatesRef = ref(storage, 'templates/WEBP_25%');
+      const res = await listAll(templatesRef);
+      // Map to filename and path
+      const files = res.items.map(item => ({
+        name: item.name,
+        fullPath: item.fullPath,
+        // e.g. "imagen_001.webp" from "templates/WEBP_25%/imagen_001.webp"
+        baseName: item.name
+      }));
+      
+      // Sort alphabetically/numerically
+      files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+      
+      set({ firebaseTemplates: files });
+    } catch (err) {
+      console.error('Error fetching templates from Firebase:', err);
+    } finally {
+      set({ isLoadingTemplates: false });
+    }
+  },
+
+  getTemplateDownloadUrl: async (fullPath) => {
+    const cache = get().templateUrlsCache;
+    if (cache[fullPath]) return cache[fullPath];
+    
+    try {
+      const fileRef = ref(storage, fullPath);
+      const url = await getDownloadURL(fileRef);
+      set(state => ({
+        templateUrlsCache: { ...state.templateUrlsCache, [fullPath]: url }
+      }));
+      return url;
+    } catch (err) {
+      console.error(`Error getting download URL for ${fullPath}:`, err);
+      return '';
+    }
+  },
+
+  uploadFirebaseTemplate: async (file) => {
+    set({ isLoadingTemplates: true });
+    try {
+      const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+      const originalPath = `templates/WEBP_100%/${fileName}`;
+      const thumbnailPath = `templates/WEBP_25%/${fileName}`;
+      
+      // 1. Upload original high-quality file
+      const originalRef = ref(storage, originalPath);
+      await uploadBytes(originalRef, file);
+      
+      // 2. Create and upload thumbnail client-side using Canvas
+      const thumbnailBlob = await createThumbnail(file, 400, 400);
+      const thumbnailRef = ref(storage, thumbnailPath);
+      await uploadBytes(thumbnailRef, thumbnailBlob);
+      
+      // Add to list
+      const newTemplate = {
+        name: fileName,
+        fullPath: thumbnailPath,
+        baseName: fileName
+      };
+      
+      set(state => ({
+        firebaseTemplates: [newTemplate, ...state.firebaseTemplates]
+      }));
+      
+      // Get URLs and cache them immediately
+      const originalUrl = await getDownloadURL(originalRef);
+      const thumbnailUrl = await getDownloadURL(thumbnailRef);
+      set(state => ({
+        templateUrlsCache: {
+          ...state.templateUrlsCache,
+          [originalPath]: originalUrl,
+          [thumbnailPath]: thumbnailUrl
+        }
+      }));
+      
+      return true;
+    } catch (err) {
+      console.error('Error uploading template:', err);
+      alert('Error al subir la plantilla a Firebase: ' + err.message);
+      return false;
+    } finally {
+      set({ isLoadingTemplates: false });
+    }
+  },
+
+  deleteFirebaseTemplate: async (fileName) => {
+    set({ isLoadingTemplates: true });
+    try {
+      const originalPath = `templates/WEBP_100%/${fileName}`;
+      const thumbnailPath = `templates/WEBP_25%/${fileName}`;
+      
+      // Delete original
+      try {
+        await deleteObject(ref(storage, originalPath));
+      } catch (e) {
+        console.warn(`Could not delete original: ${originalPath}`, e);
+      }
+      
+      // Delete thumbnail
+      try {
+        await deleteObject(ref(storage, thumbnailPath));
+      } catch (e) {
+        console.warn(`Could not delete thumbnail: ${thumbnailPath}`, e);
+      }
+      
+      // Remove from state
+      set(state => {
+        const filteredTemplates = state.firebaseTemplates.filter(t => t.name !== fileName);
+        const updatedCache = { ...state.templateUrlsCache };
+        delete updatedCache[originalPath];
+        delete updatedCache[thumbnailPath];
+        return {
+          firebaseTemplates: filteredTemplates,
+          templateUrlsCache: updatedCache
+        };
+      });
+      
+      return true;
+    } catch (err) {
+      console.error('Error deleting template:', err);
+      alert('Error al borrar la plantilla de Firebase: ' + err.message);
+      return false;
+    } finally {
+      set({ isLoadingTemplates: false });
+    }
   },
 
   setPreviewMode: (previewMode) => set({ previewMode }),

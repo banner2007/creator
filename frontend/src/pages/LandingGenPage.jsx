@@ -1,13 +1,76 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore.js';
-import { Sparkles, Sliders, Image, Download, Wand2, RefreshCw, FileImage, Palette, HelpCircle, Check } from 'lucide-react';
+import { 
+  Sparkles, Sliders, Download, Wand2, RefreshCw, 
+  FileImage, HelpCircle, Check, Search, Upload, Trash2, 
+  ChevronLeft, ChevronRight, Palette 
+} from 'lucide-react';
 
-const LANDING_SECTIONS = [
-  { id: 'conversion-hero', name: 'Cabecera Hero Principal', url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=400&q=80', description: 'Sección superior de landing con título llamativo, subtítulo y espacio para producto.' },
-  { id: 'features-grid', name: 'Características y Beneficios', url: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=400&q=80', description: 'Grilla de beneficios del producto para derribar objeciones.' },
-  { id: 'reviews-panel', name: 'Panel de Testimonios', url: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=400&q=80', description: 'Caja premium de reviews con estrellas y comentarios persuasivos.' },
-  { id: 'pricing-block', name: 'Bloque de Oferta e Incentivo', url: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=400&q=80', description: 'Sección de oferta con precio descontado, garantía y botón de compra.' }
-];
+function TemplateCard({ template, isSelected, onSelect, getTemplateDownloadUrl, onDelete }) {
+  const [imageUrl, setImageUrl] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const loadUrl = async () => {
+      setIsLoading(true);
+      const url = await getTemplateDownloadUrl(template.fullPath);
+      if (active) {
+        setImageUrl(url);
+        setIsLoading(false);
+      }
+    };
+    loadUrl();
+    return () => { active = false; };
+  }, [template.fullPath]);
+
+  return (
+    <div 
+      onClick={onSelect}
+      class={`glass-panel border rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 relative group ${
+        isSelected
+          ? 'border-purple-500 bg-purple-500/5 ring-1 ring-purple-500'
+          : 'border-white/5 bg-white/[0.01] hover:border-white/20'
+      }`}
+    >
+      <div class="aspect-square relative overflow-hidden bg-slate-950 flex items-center justify-center">
+        {isLoading ? (
+          <div class="animate-pulse flex flex-col items-center justify-center">
+            <RefreshCw class="w-6 h-6 text-purple-400 animate-spin" />
+          </div>
+        ) : (
+          <img src={imageUrl} alt={template.name} class="w-full h-full object-cover" />
+        )}
+        
+        {isSelected && (
+          <div class="absolute inset-0 bg-purple-600/20 flex items-center justify-center">
+            <div class="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white border border-purple-400 shadow-md">
+              <Check class="w-4 h-4" />
+            </div>
+          </div>
+        )}
+        
+        <button 
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (confirm('¿Estás seguro de que deseas eliminar esta plantilla de referencia?')) {
+              onDelete(template.name);
+            }
+          }}
+          class="absolute top-2 right-2 p-1.5 rounded-lg bg-black/75 hover:bg-red-600/95 text-white opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity duration-200"
+          title="Eliminar plantilla"
+        >
+          <Trash2 class="w-3.5 h-3.5" />
+        </button>
+      </div>
+      <div class="p-2.5">
+        <h5 class="text-[10px] font-bold text-slate-200 truncate" title={template.name}>{template.name.replace(/\.[^/.]+$/, "")}</h5>
+        <p class="text-[8px] text-slate-500 mt-0.5">Referencia Firebase</p>
+      </div>
+    </div>
+  );
+}
 
 export default function LandingGenPage() {
   const {
@@ -20,12 +83,20 @@ export default function LandingGenPage() {
     isGeneratingImages,
     generateImages,
     generatedImages,
-    fetchProjectImages
+    fetchProjectImages,
+    
+    // Firebase templates
+    firebaseTemplates,
+    isLoadingTemplates,
+    fetchFirebaseTemplates,
+    getTemplateDownloadUrl,
+    uploadFirebaseTemplate,
+    deleteFirebaseTemplate
   } = useStore();
 
   // Form State
   const [selectedProduct, setSelectedProduct] = useState('');
-  const [selectedSection, setSelectedSection] = useState(LANDING_SECTIONS[0].id);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
   const [format, setFormat] = useState('16:9');
   const [language, setLanguage] = useState('es');
   const [engine, setEngine] = useState('kie-ai'); // kie-ai or openai
@@ -33,12 +104,21 @@ export default function LandingGenPage() {
   const [customStyle, setCustomStyle] = useState('');
   const [customImage, setCustomImage] = useState('');
 
+  // Pagination & Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  // Upload state
+  const [isUploading, setIsUploading] = useState(false);
+
   // Results State
   const [successImages, setSuccessImages] = useState([]);
 
   useEffect(() => {
     fetchProducts();
     fetchProjects();
+    fetchFirebaseTemplates();
   }, []);
 
   useEffect(() => {
@@ -46,6 +126,17 @@ export default function LandingGenPage() {
       fetchProjectImages(selectedProject.id);
     }
   }, [selectedProject]);
+
+  useEffect(() => {
+    if (firebaseTemplates.length > 0 && !selectedTemplate) {
+      setSelectedTemplate(firebaseTemplates[0].name);
+    }
+  }, [firebaseTemplates]);
+
+  // Reset page when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const handleGenerate = async (e) => {
     e.preventDefault();
@@ -59,24 +150,30 @@ export default function LandingGenPage() {
     }
 
     const prod = products.find(p => p.id === selectedProduct);
-    const sectionObj = LANDING_SECTIONS.find(t => t.id === selectedSection);
+    
+    let refImageUrl = '';
+    if (customImage.trim()) {
+      refImageUrl = customImage.trim();
+    } else if (selectedTemplate) {
+      // Get high quality version URL from templates/WEBP_100%
+      const highQualityPath = `templates/WEBP_100%/${selectedTemplate}`;
+      refImageUrl = await getTemplateDownloadUrl(highQualityPath);
+    }
 
     // Build rich prompt for landing section layout
-    let promptText = `Landing page section type: ${sectionObj?.name}. Product: ${prod.name}. Background color: ${bgColor}. Description: ${prod.description}.`;
+    let promptText = `Landing page section composition. Product: ${prod.name}. Background color: ${bgColor}. Description: ${prod.description}. referencing selected composition layout.`;
     if (customStyle.trim()) {
       promptText += ` Style customization: ${customStyle}`;
     }
 
-    const refImage = customImage.trim() || sectionObj?.url || '';
-
     const results = await generateImages(
       promptText,
-      sectionObj?.id || 'hero',
+      selectedTemplate || 'custom',
       format,
       1,
       selectedProject.id,
       engine,
-      refImage
+      refImageUrl
     );
 
     if (results && results.length > 0) {
@@ -84,6 +181,33 @@ export default function LandingGenPage() {
       fetchProjectImages(selectedProject.id);
     }
   };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setIsUploading(true);
+    const success = await uploadFirebaseTemplate(file);
+    setIsUploading(false);
+    
+    if (success) {
+      // Select the newly uploaded template
+      if (firebaseTemplates.length > 0) {
+        setSelectedTemplate(firebaseTemplates[0].name);
+      }
+    }
+  };
+
+  // Filter and Paginate
+  const filteredTemplates = firebaseTemplates.filter(t => 
+    t.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const totalPages = Math.ceil(filteredTemplates.length / itemsPerPage) || 1;
+  const displayedTemplates = filteredTemplates.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <div class="p-6 sm:p-10 max-w-7xl mx-auto space-y-8">
@@ -147,44 +271,107 @@ export default function LandingGenPage() {
             )}
           </div>
 
-          {/* Section Type Selection */}
-          <div class="space-y-3">
-            <label class="text-xs font-semibold text-slate-400 block">2. Selecciona la Estructura / Tipo de Sección</label>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {LANDING_SECTIONS.map(sec => (
-                <div 
-                  key={sec.id}
-                  onClick={() => {
-                    setSelectedSection(sec.id);
-                    setCustomImage('');
-                  }}
-                  class={`glass-panel border rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 relative ${
-                    selectedSection === sec.id && !customImage
-                      ? 'border-purple-500 bg-purple-500/5 ring-1 ring-purple-500'
-                      : 'border-white/5 bg-white/[0.01] hover:border-white/20'
-                  }`}
-                >
-                  <div class="aspect-square relative overflow-hidden bg-slate-950">
-                    <img src={sec.url} alt={sec.name} class="w-full h-full object-cover" />
-                    {selectedSection === sec.id && !customImage && (
-                      <div class="absolute inset-0 bg-purple-600/20 flex items-center justify-center">
-                        <div class="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white border border-purple-400 shadow-md">
-                          <Check class="w-4 h-4" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div class="p-3">
-                    <h5 class="text-xs font-bold text-slate-200 line-clamp-1">{sec.name}</h5>
-                    <p class="text-[9px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">{sec.description}</p>
-                  </div>
+          {/* Section Type Selection from Firebase */}
+          <div class="space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <label class="text-xs font-semibold text-slate-400 block">2. Selecciona la Estructura / Tipo de Sección</label>
+              
+              {/* Actions & Search */}
+              <div class="flex items-center gap-2">
+                {/* Search input */}
+                <div class="relative">
+                  <Search class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="Buscar plantilla..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    class="bg-slate-950/80 border border-white/5 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-purple-500/50 w-36 sm:w-44"
+                  />
                 </div>
-              ))}
+
+                {/* Upload Button */}
+                <label class="cursor-pointer bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-md flex items-center gap-1.5 transition-all">
+                  {isUploading ? (
+                    <RefreshCw class="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Upload class="w-3 h-3" />
+                  )}
+                  <span>{isUploading ? 'Subiendo...' : 'Subir'}</span>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleFileUpload} 
+                    class="hidden" 
+                    disabled={isUploading}
+                  />
+                </label>
+              </div>
             </div>
+
+            {/* Template Grid */}
+            {isLoadingTemplates && firebaseTemplates.length === 0 ? (
+              <div class="flex flex-col items-center justify-center py-10 space-y-2">
+                <RefreshCw class="w-8 h-8 text-purple-400 animate-spin" />
+                <p class="text-xs text-slate-400">Cargando catálogo de plantillas de Firebase...</p>
+              </div>
+            ) : (
+              <div class="space-y-4">
+                {displayedTemplates.length === 0 ? (
+                  <div class="text-center py-8 border border-white/5 rounded-2xl bg-white/[0.01]">
+                    <p class="text-xs text-slate-500">No se encontraron plantillas que coincidan con la búsqueda.</p>
+                  </div>
+                ) : (
+                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-fadeIn">
+                    {displayedTemplates.map(temp => (
+                      <TemplateCard
+                        key={temp.name}
+                        template={temp}
+                        isSelected={selectedTemplate === temp.name && !customImage}
+                        onSelect={() => {
+                          setSelectedTemplate(temp.name);
+                          setCustomImage('');
+                        }}
+                        getTemplateDownloadUrl={getTemplateDownloadUrl}
+                        onDelete={deleteFirebaseTemplate}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div class="flex items-center justify-between border-t border-white/5 pt-3">
+                    <span class="text-[10px] text-slate-500">
+                      Mostrando {Math.min(filteredTemplates.length, (currentPage - 1) * itemsPerPage + 1)}-{Math.min(filteredTemplates.length, currentPage * itemsPerPage)} de {filteredTemplates.length} plantillas
+                    </span>
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        class="p-1.5 rounded-lg border border-white/5 bg-slate-950 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
+                      >
+                        <ChevronLeft class="w-4 h-4" />
+                      </button>
+                      <span class="text-xs text-slate-300 font-medium">{currentPage} / {totalPages}</span>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        class="p-1.5 rounded-lg border border-white/5 bg-slate-950 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
+                      >
+                        <ChevronRight class="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Custom Section Template URL */}
             <div class="flex flex-col gap-1.5 pt-2">
-              <label class="text-xs font-medium text-slate-500">O sube tu propio bloque de referencia (URL de imagen)</label>
+              <label class="text-xs font-medium text-slate-500">O ingresa un enlace directo a otra sección de landing de referencia</label>
               <input
                 type="text"
                 placeholder="https://ejemplo.com/otra-seccion-landing.jpg"
@@ -192,7 +379,7 @@ export default function LandingGenPage() {
                 value={customImage}
                 onChange={e => {
                   setCustomImage(e.target.value);
-                  setSelectedSection('');
+                  setSelectedTemplate('');
                 }}
               />
             </div>
@@ -242,8 +429,8 @@ export default function LandingGenPage() {
             <div class="flex flex-col gap-1.5">
               <label class="text-xs font-semibold text-slate-400">Motor de Generación</label>
               <select class="glass-input bg-slate-950" value={engine} onChange={e => setEngine(e.target.value)}>
-                <option value="kie-ai">Kie.ai (Flux Kontext)</option>
-                <option value="openai">OpenAI (DALL-E 3)</option>
+                <option value="kie-ai">Kie.ai (Flux Kontext - Composición)</option>
+                <option value="openai">OpenAI (ChatGPT Imagen 2.0 - Creatividad)</option>
               </select>
             </div>
           </div>
@@ -346,7 +533,7 @@ export default function LandingGenPage() {
                     </div>
                     <div class="flex justify-between items-center">
                       <span class="text-[9px] text-white truncate max-w-[80px] font-semibold">{img.prompt}</span>
-                      <a href={img.image_url} download class="p-1 rounded bg-white/20 text-white hover:bg-white/40"><Download class="w-3 h-3" /></a>
+                      <a href={img.image_url} download class="p-1 rounded bg-white/20 text-white hover:bg-white/40"><Download class="w-3.5 h-3.5" /></a>
                     </div>
                   </div>
                 </div>
