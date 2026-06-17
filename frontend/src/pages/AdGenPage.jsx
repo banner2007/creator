@@ -3,10 +3,13 @@ import { useStore } from '../store/useStore.js';
 import { 
   Sparkles, Sliders, Download, Wand2, RefreshCw, 
   FileImage, HelpCircle, Check, Search, Upload, Trash2, 
-  ChevronLeft, ChevronRight, ArrowLeft, Plus, DollarSign, Folder 
+  ChevronLeft, ChevronRight, ArrowLeft, Plus, DollarSign, Folder,
+  Play, X, Globe, Maximize2, FileText, CheckCircle2, Eye
 } from 'lucide-react';
+import { storage, ref, uploadBytes, getDownloadURL } from '../utils/firebase.js';
 
-function TemplateCard({ template, isSelected, onSelect, getTemplateDownloadUrl, onDelete }) {
+// Sub-component for template item inside gallery modal
+function TemplateGridItem({ template, onSelect, getTemplateDownloadUrl }) {
   const [imageUrl, setImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -27,46 +30,242 @@ function TemplateCard({ template, isSelected, onSelect, getTemplateDownloadUrl, 
   return (
     <div 
       onClick={onSelect}
-      class={`glass-panel border rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 relative group ${
-        isSelected
-          ? 'border-purple-500 bg-purple-500/5 ring-1 ring-purple-500'
-          : 'border-white/5 bg-white/[0.01] hover:border-white/20'
-      }`}
+      className="glass-panel border border-white/5 rounded-2xl overflow-hidden cursor-pointer hover:border-purple-500/50 hover:bg-purple-500/[0.02] hover:scale-[1.01] transition-all duration-300 aspect-square relative group"
     >
-      <div class="aspect-square relative overflow-hidden bg-slate-950 flex items-center justify-center">
-        {isLoading ? (
-          <div class="animate-pulse flex flex-col items-center justify-center">
-            <RefreshCw class="w-6 h-6 text-purple-400 animate-spin" />
+      {isLoading ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40">
+          <RefreshCw className="w-5 h-5 text-purple-400 animate-spin" />
+        </div>
+      ) : (
+        <img src={imageUrl} alt={template.name} className="w-full h-full object-cover" />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-3 flex flex-col justify-end">
+        <h5 className="text-[10px] font-bold text-white truncate">{template.name.replace(/\.[^/.]+$/, "")}</h5>
+      </div>
+    </div>
+  );
+}
+
+// Modal for Template Selection Gallery
+function TemplateSelectionModal({ 
+  isOpen, 
+  onClose, 
+  templates, 
+  onSelect, 
+  getTemplateDownloadUrl, 
+  searchQuery, 
+  setSearchQuery, 
+  isUploading, 
+  handleFileUpload 
+}) {
+  if (!isOpen) return null;
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 8;
+
+  const filtered = templates.filter(t => 
+    t.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const totalP = Math.ceil(filtered.length / itemsPerPage) || 1;
+  const displayed = filtered.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md px-4 py-8">
+      <div className="w-full max-w-4xl glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 relative max-h-[90vh] overflow-y-auto flex flex-col justify-between">
+        <div>
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <Folder className="w-5 h-5 text-purple-400" />
+                <span>Galería de Plantillas EcomMagic</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">Selecciona una plantilla de referencia para guiar la composición e iluminación de la IA.</p>
+            </div>
+            <button 
+              type="button" 
+              onClick={onClose}
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-        ) : (
-          <img src={imageUrl} alt={template.name} class="w-full h-full object-cover" />
-        )}
-        
-        {isSelected && (
-          <div class="absolute inset-0 bg-purple-600/20 flex items-center justify-center">
-            <div class="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white border border-purple-400 shadow-md">
-              <Check class="w-4 h-4" />
+
+          {/* Search & Action bar */}
+          <div className="flex flex-col sm:flex-row gap-3 justify-between items-center mb-6">
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+              <input
+                type="text"
+                placeholder="Buscar plantilla..."
+                value={searchQuery}
+                onChange={e => { setSearchQuery(e.target.value); setPage(1); }}
+                className="bg-slate-950 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-xs text-slate-300 focus:outline-none focus:border-purple-500/50 w-full"
+              />
+            </div>
+
+            <label className="cursor-pointer bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md flex items-center gap-2 transition-all w-full sm:w-auto justify-center">
+              {isUploading ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4" />
+              )}
+              <span>{isUploading ? 'Subiendo plantilla...' : 'Subir Plantilla Personalizada'}</span>
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={e => {
+                  handleFileUpload(e);
+                  setPage(1);
+                }} 
+                className="hidden" 
+                disabled={isUploading}
+              />
+            </label>
+          </div>
+
+          {/* Templates Grid */}
+          <div className="min-h-[300px]">
+            {displayed.length === 0 ? (
+              <div className="text-center py-16 border border-white/5 rounded-2xl bg-white/[0.01]">
+                <p className="text-sm text-slate-400">No se encontraron plantillas.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {displayed.map(temp => (
+                  <TemplateGridItem
+                    key={temp.name}
+                    template={temp}
+                    onSelect={() => {
+                      onSelect(temp.name);
+                      onClose();
+                    }}
+                    getTemplateDownloadUrl={getTemplateDownloadUrl}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Pagination */}
+        {totalP > 1 && (
+          <div className="flex items-center justify-between border-t border-white/5 pt-4 mt-6">
+            <span className="text-[11px] text-slate-500">
+              Mostrando {Math.min(filtered.length, (page - 1) * itemsPerPage + 1)}-{Math.min(filtered.length, page * itemsPerPage)} de {filtered.length} plantillas
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                disabled={page === 1}
+                className="p-2 rounded-xl border border-white/5 bg-slate-950 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs text-slate-300 font-semibold">{page} / {totalP}</span>
+              <button
+                type="button"
+                onClick={() => setPage(prev => Math.min(totalP, prev + 1))}
+                disabled={page === totalP}
+                className="p-2 rounded-xl border border-white/5 bg-slate-950 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         )}
-        
-        <button 
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (confirm('¿Estás seguro de que deseas eliminar esta plantilla de referencia?')) {
-              onDelete(template.name);
-            }
-          }}
-          class="absolute top-2 right-2 p-1.5 rounded-lg bg-black/75 hover:bg-red-600/95 text-white opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity duration-200"
-          title="Eliminar plantilla"
-        >
-          <Trash2 class="w-3.5 h-3.5" />
-        </button>
       </div>
-      <div class="p-2.5">
-        <h5 class="text-[10px] font-bold text-slate-200 truncate" title={template.name}>{template.name.replace(/\.[^/.]+$/, "")}</h5>
-        <p class="text-[8px] text-slate-500 mt-0.5">Referencia Firebase</p>
+    </div>
+  );
+}
+
+// Modal for Video Tutorial
+function TutorialModal({ isOpen, onClose }) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md px-4">
+      <div className="w-full max-w-2xl glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 relative max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-6">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <Play className="w-5 h-5 text-purple-400" />
+            <span>Videotutorial: Generador de Anuncios</span>
+          </h3>
+          <button 
+            type="button" 
+            onClick={onClose}
+            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        
+        <div className="aspect-video w-full rounded-2xl overflow-hidden border border-white/10 bg-slate-950 relative">
+          <iframe 
+            className="w-full h-full"
+            src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1" 
+            title="Video Tutorial"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          ></iframe>
+        </div>
+        
+        <div className="mt-4 text-xs text-slate-400 leading-relaxed">
+          Aprende cómo cargar referencias de alta conversión, optimizar las imágenes de tu producto eliminando fondos, y utilizar los motores de IA para generar anuncios listos para pautar.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Modal for Success Result Generation
+function SuccessModal({ isOpen, onClose, imageUrl, productName }) {
+  if (!isOpen || !imageUrl) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md px-4">
+      <div className="w-full max-w-lg glass-panel p-6 rounded-3xl border border-white/10 relative text-center space-y-4">
+        <div className="flex items-center justify-between border-b border-white/5 pb-3">
+          <h3 className="text-base font-bold text-white flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 animate-bounce" />
+            <span>¡Anuncio Generado Exitosamente!</span>
+          </h3>
+          <button 
+            type="button" 
+            onClick={onClose}
+            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="rounded-2xl overflow-hidden border border-white/10 shadow-xl bg-slate-950 aspect-square relative">
+          <img src={imageUrl} alt="Generated Banner" className="w-full h-full object-cover" />
+        </div>
+
+        <div className="text-left py-1">
+          <p className="text-[10px] text-slate-500">Producto asociado</p>
+          <p className="text-xs font-bold text-slate-200 truncate">{productName}</p>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 text-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-bold text-xs transition-all"
+          >
+            Cerrar
+          </button>
+          
+          <a 
+            href={imageUrl}
+            download="ecom-magic-anuncio.webp"
+            target="_blank"
+            rel="noreferrer"
+            className="flex-1 py-3 text-center rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
+          >
+            <Download className="w-4 h-4" />
+            <span>Descargar Imagen</span>
+          </a>
+        </div>
       </div>
     </div>
   );
@@ -91,32 +290,37 @@ export default function AdGenPage() {
     isLoadingTemplates,
     fetchFirebaseTemplates,
     getTemplateDownloadUrl,
-    uploadFirebaseTemplate,
-    deleteFirebaseTemplate
+    uploadFirebaseTemplate
   } = useStore();
 
   // Navigation state (Null means show product grid dashboard)
   const [selectedProductForGen, setSelectedProductForGen] = useState(null);
 
   // Form State
-  const [selectedProduct, setSelectedProduct] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [selectedTemplateUrl, setSelectedTemplateUrl] = useState('');
+  const [customImage, setCustomImage] = useState('');
+  const [productImages, setProductImages] = useState(['', '', '']);
+  const [slotUploading, setSlotUploading] = useState([false, false, false]);
+
   const [format, setFormat] = useState('1:1');
   const [language, setLanguage] = useState('es');
   const [engine, setEngine] = useState('kie-ai'); // kie-ai or openai
+  const [customStyleEnabled, setCustomStyleEnabled] = useState(false);
   const [customStyle, setCustomStyle] = useState('');
-  const [customImage, setCustomImage] = useState('');
 
-  // Pagination & Search State
+  // Pagination & Search State (inside template selection modal)
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
-
-  // Upload state
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingReference, setIsUploadingReference] = useState(false);
+
+  // Modals state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showTutorialModal, setShowTutorialModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Product Creation Modal State
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [newProdName, setNewProdName] = useState('');
   const [newProdPrice, setNewProdPrice] = useState('');
   const [newProdCategory, setNewProdCategory] = useState('');
@@ -145,35 +349,55 @@ export default function AdGenPage() {
     }
   }, [firebaseTemplates]);
 
-  // Reset page when search query changes
+  // Handle template selection and fetch preview URL
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
+    if (selectedTemplate) {
+      const loadTemplateUrl = async () => {
+        const path = `templates/WEBP_25%/${selectedTemplate}`;
+        const url = await getTemplateDownloadUrl(path);
+        setSelectedTemplateUrl(url);
+      };
+      loadTemplateUrl();
+    } else if (customImage) {
+      setSelectedTemplateUrl(customImage);
+    } else {
+      setSelectedTemplateUrl('');
+    }
+  }, [selectedTemplate, customImage]);
+
+  // Prepopulate Product Images on product selection
+  useEffect(() => {
+    if (selectedProductForGen) {
+      setProductImages([
+        selectedProductForGen.cover_image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80',
+        '',
+        ''
+      ]);
+      setSuccessImages([]);
+    }
+  }, [selectedProductForGen]);
 
   const handleGenerate = async (e) => {
     e.preventDefault();
     if (!selectedProject) {
-      alert('Por favor selecciona un Proyecto en la esquina superior para asociar las imágenes.');
+      alert('Por favor selecciona un Proyecto/Campaña en la esquina superior para asociar las imágenes.');
       return;
     }
-    if (!selectedProduct) {
+    if (!selectedProductForGen) {
       alert('Por favor selecciona un producto.');
       return;
     }
 
-    const prod = products.find(p => p.id === selectedProduct);
-    
     let refImageUrl = '';
     if (customImage.trim()) {
       refImageUrl = customImage.trim();
     } else if (selectedTemplate) {
-      // Get the high quality version URL from templates/WEBP_100%
       const highQualityPath = `templates/WEBP_100%/${selectedTemplate}`;
       refImageUrl = await getTemplateDownloadUrl(highQualityPath);
     }
 
-    // Build rich prompt for layout model
-    let promptText = `Product: ${prod.name}. Description: ${prod.description}. Style context: referencing selected composition template.`;
+    // Build prompt for AI model
+    let promptText = `Product: ${selectedProductForGen.name}. Description: ${selectedProductForGen.description}. Style context: referencing selected composition template.`;
     if (customStyle.trim()) {
       promptText += ` Additional style directions: ${customStyle}`;
     }
@@ -182,14 +406,16 @@ export default function AdGenPage() {
       promptText,
       selectedTemplate || 'custom',
       format,
-      1, // Generate 1 banner per action
+      1,
       selectedProject.id,
       engine,
-      refImageUrl
+      refImageUrl,
+      productImages[0] // Pass primary product image URL
     );
 
     if (results && results.length > 0) {
       setSuccessImages(results);
+      setShowSuccessModal(true);
       fetchProjectImages(selectedProject.id);
     }
   };
@@ -205,8 +431,74 @@ export default function AdGenPage() {
     if (success) {
       if (firebaseTemplates.length > 0) {
         setSelectedTemplate(firebaseTemplates[0].name);
+        setCustomImage('');
       }
     }
+  };
+
+  const handleReferenceUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setIsUploadingReference(true);
+    try {
+      const fileName = `templates/custom/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+      const storageRef = ref(storage, fileName);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setCustomImage(url);
+      setSelectedTemplate('');
+      setSelectedTemplateUrl(url);
+    } catch (err) {
+      console.error('Error uploading custom reference image:', err);
+      alert('Error al subir la referencia local: ' + err.message);
+    } finally {
+      setIsUploadingReference(false);
+    }
+  };
+
+  const handleProductImageUpload = async (index, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const newUploading = [...slotUploading];
+    newUploading[index] = true;
+    setSlotUploading(newUploading);
+    
+    try {
+      const fileName = `products/${selectedProductForGen.id}-${index}-${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+      const storageRef = ref(storage, fileName);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      
+      const newImages = [...productImages];
+      newImages[index] = url;
+      setProductImages(newImages);
+    } catch (err) {
+      console.error('Error uploading product photo:', err);
+      alert('Error al subir la foto del producto: ' + err.message);
+    } finally {
+      const newUploading = [...slotUploading];
+      newUploading[index] = false;
+      setSlotUploading(newUploading);
+    }
+  };
+
+  const removeProductImage = (index) => {
+    const newImages = [...productImages];
+    newImages[index] = '';
+    setProductImages(newImages);
+  };
+
+  const handleDownloadGuide = () => {
+    const element = document.createElement("a");
+    const fileContent = "Guía de Optimización de Anuncios EcomMagic:\n\n1. Composición: Selecciona plantillas con composiciones limpias y contrastadas.\n2. Fotos del Producto: Carga imágenes del producto desde varios ángulos, preferiblemente con fondos simples.\n3. Motores: Usa el Modelo Ecom Magic para composiciones fotorrealistas integradas y GPT Image 2 para renders con alta dosis creativa.";
+    const file = new Blob([fileContent], {type: 'text/plain'});
+    element.href = URL.createObjectURL(file);
+    element.download = "Guia_Optimizacion_Anuncios.txt";
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
   };
 
   const handleCreateProductSubmit = async (e) => {
@@ -228,84 +520,74 @@ export default function AdGenPage() {
     if (newProd) {
       setShowCreateModal(false);
       fetchProducts();
-      // Select the newly created product for ad generation directly
-      setSelectedProduct(newProd.id);
       setSelectedProductForGen(newProd);
     }
   };
 
-  // Filter and Paginate
-  const filteredTemplates = firebaseTemplates.filter(t => 
-    t.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  
-  const totalPages = Math.ceil(filteredTemplates.length / itemsPerPage) || 1;
-  const displayedTemplates = filteredTemplates.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Filter history banners for selected product
+  const productBanners = selectedProductForGen 
+    ? generatedImages.filter(img => 
+        img.prompt.toLowerCase().includes(selectedProductForGen.name.toLowerCase())
+      )
+    : [];
 
-  // VIEW 1: Dashboard Product Grid (as in User's screenshot)
+  // VIEW 1: Dashboard Product Grid (Dashboard View)
   if (selectedProductForGen === null) {
     return (
-      <div class="p-6 sm:p-10 max-w-7xl mx-auto space-y-8 animate-fadeIn">
+      <div className="p-6 sm:p-10 max-w-7xl mx-auto space-y-8 animate-fadeIn">
         {/* Header */}
-        <div class="flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <div>
-            <h2 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-purple-400 bg-clip-text text-transparent">
+            <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-purple-400 bg-clip-text text-transparent">
               Generador de Anuncios
             </h2>
-            <p class="text-slate-400 mt-2 text-sm">
+            <p className="text-slate-400 mt-2 text-sm">
               Organiza tus productos y genera anuncios profesionales con IA
             </p>
           </div>
           
           {/* Project Selector top right */}
-          <div class="flex items-center gap-2 bg-slate-900 border border-white/5 px-4 py-2 rounded-2xl">
-            <span class="text-xs text-slate-500 font-semibold">Campaña:</span>
+          <div className="flex items-center gap-2 bg-slate-900 border border-white/5 px-4 py-2 rounded-2xl">
+            <span className="text-xs text-slate-500 font-semibold">Campaña:</span>
             <select
-              class="bg-transparent text-xs text-slate-300 font-semibold focus:outline-none"
+              className="bg-transparent text-xs text-slate-300 font-semibold focus:outline-none cursor-pointer"
               value={selectedProject?.id || ''}
               onChange={e => {
                 const proj = projects.find(p => p.id === e.target.value);
                 if (proj) selectProject(proj);
               }}
             >
-              <option value="" disabled>Selecciona Proyecto...</option>
+              <option value="" disabled className="bg-slate-950">Selecciona Proyecto...</option>
               {projects.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p.id} value={p.id} className="bg-slate-950">{p.name}</option>
               ))}
             </select>
           </div>
         </div>
 
         {/* Products Grid */}
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {products.map(product => {
-            // Check if there are generated images in generatedImages (history) for this product
             const count = generatedImages.filter(img => 
               img.prompt.toLowerCase().includes(product.name.toLowerCase())
             ).length;
             
             const countText = count > 0 
               ? `${count} Anuncio${count > 1 ? 's' : ''}` 
-              : '1 Anuncio'; // Keep "1 Anuncio" placeholder matching screenshot default if 0
+              : '1 Anuncio'; 
 
             return (
               <div 
                 key={product.id}
-                onClick={() => {
-                  setSelectedProduct(product.id);
-                  setSelectedProductForGen(product);
-                }}
-                class="glass-panel border border-white/10 rounded-3xl overflow-hidden cursor-pointer hover:shadow-xl hover:border-purple-500/30 hover:scale-[1.02] transition-all duration-300 flex flex-col justify-between group h-full min-h-[320px]"
+                onClick={() => setSelectedProductForGen(product)}
+                className="glass-panel border border-white/10 rounded-3xl overflow-hidden cursor-pointer hover:shadow-xl hover:border-purple-500/30 hover:scale-[1.02] transition-all duration-300 flex flex-col justify-between group h-full min-h-[320px]"
               >
                 {/* Product Cover Image */}
-                <div class="aspect-square w-full relative bg-slate-950 overflow-hidden rounded-t-3xl">
+                <div className="aspect-square w-full relative bg-slate-950 overflow-hidden rounded-t-3xl">
                   <img 
                     src={product.cover_image} 
                     alt={product.name} 
-                    class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     onError={(e) => {
                       e.target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80';
                     }}
@@ -313,27 +595,26 @@ export default function AdGenPage() {
                   
                   {/* Category Badge */}
                   {product.category && (
-                    <div class="absolute top-4 left-4">
-                      <span class="px-2.5 py-1 rounded-full text-[9px] font-bold bg-black/60 border border-white/10 text-purple-300 uppercase tracking-wider">
+                    <div className="absolute top-4 left-4">
+                      <span className="px-2.5 py-1 rounded-full text-[9px] font-bold bg-black/60 border border-white/10 text-purple-300 uppercase tracking-wider">
                         {product.category}
                       </span>
                     </div>
                   )}
 
                   {/* Price Tag */}
-                  <div class="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
-                    <span class="text-xs font-extrabold text-white">${product.price}</span>
+                  <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
+                    <span className="text-xs font-extrabold text-white">${product.price}</span>
                   </div>
                 </div>
 
                 {/* Product Info */}
-                <div class="p-5 flex-1 flex flex-col items-center justify-center text-center space-y-2">
-                  <h4 class="font-bold text-slate-100 group-hover:text-purple-400 transition-colors line-clamp-1">
+                <div className="p-5 flex-1 flex flex-col items-center justify-center text-center space-y-2">
+                  <h4 className="font-bold text-slate-100 group-hover:text-purple-400 transition-colors line-clamp-1">
                     {product.name}
                   </h4>
                   
-                  {/* Badge styled exactly like Ecom Magic AI */}
-                  <span class="inline-block px-3 py-1 rounded-full text-[10px] font-bold bg-purple-600/10 text-purple-400 border border-purple-500/20">
+                  <span className="inline-block px-3 py-1 rounded-full text-[10px] font-bold bg-purple-600/10 text-purple-400 border border-purple-500/20">
                     {countText}
                   </span>
                 </div>
@@ -341,7 +622,7 @@ export default function AdGenPage() {
             );
           })}
 
-          {/* Add Product Card (matching screenshot) */}
+          {/* Add Product Card */}
           <div 
             onClick={() => {
               setNewProdName('');
@@ -351,52 +632,52 @@ export default function AdGenPage() {
               setNewProdCoverImage('');
               setShowCreateModal(true);
             }}
-            class="glass-panel border-2 border-dashed border-white/10 hover:border-purple-500/50 hover:bg-purple-500/[0.02] rounded-3xl p-6 flex flex-col items-center justify-center min-h-[320px] text-center cursor-pointer transition-all duration-300 group"
+            className="glass-panel border-2 border-dashed border-white/10 hover:border-purple-500/50 hover:bg-purple-500/[0.02] rounded-3xl p-6 flex flex-col items-center justify-center min-h-[320px] text-center cursor-pointer transition-all duration-300 group"
           >
-            <div class="w-12 h-12 rounded-2xl bg-white/5 group-hover:bg-purple-600 flex items-center justify-center text-slate-400 group-hover:text-white shadow-lg transition-all mb-4">
-              <Plus class="w-6 h-6" />
+            <div className="w-12 h-12 rounded-2xl bg-white/5 group-hover:bg-purple-600 flex items-center justify-center text-slate-400 group-hover:text-white shadow-lg transition-all mb-4">
+              <Plus className="w-6 h-6" />
             </div>
-            <h4 class="font-bold text-slate-200 group-hover:text-purple-400 transition-colors">
+            <h4 className="font-bold text-slate-200 group-hover:text-purple-400 transition-colors">
               Agregar producto
             </h4>
-            <p class="text-xs text-slate-500 mt-1.5 max-w-[200px] leading-relaxed">
+            <p className="text-xs text-slate-500 mt-1.5 max-w-[200px] leading-relaxed">
               Crea un nuevo producto
             </p>
           </div>
         </div>
 
-        {/* Create Product Modal inside AdGenPage */}
+        {/* Create Product Modal */}
         {showCreateModal && (
-          <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-            <div class="w-full max-w-lg glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 relative max-h-[90vh] overflow-y-auto">
-              <h3 class="text-xl font-bold mb-2">Agregar Nuevo Producto</h3>
-              <p class="text-xs text-slate-400 mb-6">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+            <div className="w-full max-w-lg glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 relative max-h-[90vh] overflow-y-auto">
+              <h3 className="text-xl font-bold mb-2">Agregar Nuevo Producto</h3>
+              <p className="text-xs text-slate-400 mb-6">
                 Esta información será leída por la IA para diseñar anuncios persuasivos y redactar copys.
               </p>
               
-              <form onSubmit={handleCreateProductSubmit} class="space-y-5">
-                <div class="flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-400">Nombre del Producto</label>
+              <form onSubmit={handleCreateProductSubmit} className="space-y-5">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">Nombre del Producto</label>
                   <input 
                     type="text" 
                     placeholder="Ej: Cobija piel de conejo" 
-                    class="glass-input"
+                    className="glass-input"
                     value={newProdName}
                     onChange={e => setNewProdName(e.target.value)}
                     required 
                   />
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                  <div class="flex flex-col gap-1.5">
-                    <label class="text-xs font-semibold text-slate-400">Precio de Venta ($)</label>
-                    <div class="relative flex items-center">
-                      <DollarSign class="w-4 h-4 text-slate-500 absolute left-3" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-400">Precio de Venta ($)</label>
+                    <div className="relative flex items-center">
+                      <DollarSign className="w-4 h-4 text-slate-500 absolute left-3" />
                       <input 
                         type="number" 
                         step="0.01"
                         placeholder="0.00" 
-                        class="glass-input pl-9 w-full"
+                        className="glass-input pl-9 w-full"
                         value={newProdPrice}
                         onChange={e => setNewProdPrice(e.target.value)}
                         required 
@@ -404,46 +685,46 @@ export default function AdGenPage() {
                     </div>
                   </div>
 
-                  <div class="flex flex-col gap-1.5">
-                    <label class="text-xs font-semibold text-slate-400">Categoría</label>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-400">Categoría</label>
                     <input 
                       type="text" 
                       placeholder="Ej: Hogar, Tecnología" 
-                      class="glass-input"
+                      className="glass-input"
                       value={newProdCategory}
                       onChange={e => setNewProdCategory(e.target.value)}
                     />
                   </div>
                 </div>
 
-                <div class="flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-400">Descripción Comercial (Dolores y Beneficios)</label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">Descripción Comercial (Dolores y Beneficios)</label>
                   <textarea 
                     rows="4"
                     placeholder="Ej: Cobija térmica ultrasuave ideal para invierno. Es antialérgica, ligera y lavable..." 
-                    class="glass-input resize-none"
+                    className="glass-input resize-none"
                     value={newProdDescription}
                     onChange={e => setNewProdDescription(e.target.value)}
                     required 
                   />
                 </div>
 
-                <div class="flex flex-col gap-1.5">
-                  <label class="text-xs font-semibold text-slate-400">URL de Imagen de Portada</label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400">URL de Imagen de Portada</label>
                   <input 
                     type="text" 
                     placeholder="https://ejemplo.com/foto-producto.jpg" 
-                    class="glass-input"
+                    className="glass-input"
                     value={newProdCoverImage}
                     onChange={e => setNewProdCoverImage(e.target.value)}
                   />
-                  <span class="text-[10px] text-slate-500">Deja vacío para usar una imagen genérica por defecto.</span>
+                  <span className="text-[10px] text-slate-500">Deja vacío para usar una imagen genérica por defecto.</span>
                 </div>
                 
-                <div class="flex justify-end gap-3 pt-4 border-t border-white/5">
+                <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
                   <button 
                     type="button" 
-                    class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:bg-white/5 transition-all"
+                    className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:bg-white/5 transition-all"
                     onClick={() => setShowCreateModal(false)}
                   >
                     Cancelar
@@ -452,7 +733,7 @@ export default function AdGenPage() {
                   <button 
                     type="submit"
                     disabled={isSavingProduct}
-                    class="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-sm font-semibold text-white transition-all disabled:opacity-50"
+                    className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-sm font-semibold text-white transition-all disabled:opacity-50"
                   >
                     {isSavingProduct ? 'Guardando...' : 'Registrar Producto'}
                   </button>
@@ -465,337 +746,405 @@ export default function AdGenPage() {
     );
   }
 
-  // VIEW 2: Ad Generation Form (rendered when product is selected)
+  // VIEW 2: Ad Generation Detail (rendered when a product is selected, Ecom Magic UI)
   return (
-    <div class="p-6 sm:p-10 max-w-7xl mx-auto space-y-6 animate-fadeIn">
-      {/* Back Button */}
-      <button 
-        type="button" 
-        onClick={() => setSelectedProductForGen(null)}
-        class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition-colors bg-white/5 px-3.5 py-2 rounded-xl border border-white/5 hover:bg-white/10"
-      >
-        <ArrowLeft class="w-4 h-4" />
-        <span>Volver al Catálogo</span>
-      </button>
+    <div className="p-6 sm:p-10 max-w-5xl mx-auto space-y-8 animate-fadeIn relative">
+      
+      {/* Loading Overlay */}
+      {isGeneratingImages && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/75 backdrop-blur-md">
+          <div className="glass-panel p-10 rounded-3xl border border-white/10 text-center max-w-sm space-y-6 animate-pulse">
+            <RefreshCw className="w-16 h-16 text-purple-400 animate-spin mx-auto" />
+            <div className="space-y-2">
+              <h3 className="text-lg font-bold text-white">Generando Anuncio Profesional</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                La inteligencia artificial está analizando los dolores de tu producto, acomodándolo en la perspectiva de la plantilla seleccionada e iluminándolo de manera fotorrealista.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Header */}
-      <div>
-        <h2 class="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent flex items-center gap-3">
-          <Sparkles class="w-8 h-8 text-purple-400 animate-pulse" />
-          <span>Generar Anuncio para: {selectedProductForGen.name}</span>
-        </h2>
-        <p class="text-slate-400 mt-1.5 text-xs">
-          Crea banners publicitarios persuasivos combinando tu producto con plantillas ganadoras de referencia.
-        </p>
+      {/* Header Row */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <button 
+            type="button" 
+            onClick={() => setSelectedProductForGen(null)}
+            className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 hover:text-white transition-all duration-300 mt-1 shadow-md"
+            title="Volver al Catálogo"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h2 className="text-2xl font-extrabold tracking-tight text-white uppercase break-all">
+              {selectedProductForGen.name}
+            </h2>
+            <p className="text-slate-400 mt-1 text-xs font-semibold tracking-wide">
+              Genera Anuncios profesionales para este producto
+            </p>
+          </div>
+        </div>
+
+        {/* Buttons right */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleDownloadGuide}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-purple-700/60 hover:bg-purple-700 text-white border border-purple-500/20 text-xs font-bold transition-all shadow-lg hover:shadow-purple-500/10"
+          >
+            <FileText className="w-4 h-4 text-purple-200" />
+            <span>Descargar Guía</span>
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => setShowTutorialModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-lg shadow-purple-500/10"
+          >
+            <Play className="w-4 h-4 fill-white" />
+            <span>Ver Tutorial</span>
+          </button>
+        </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      {/* Generar Nuevo Anuncio Main Form Card */}
+      <form onSubmit={handleGenerate} className="glass-panel p-6 sm:p-8 rounded-3xl border border-white/5 bg-[#0e0e11] space-y-6 shadow-xl relative overflow-hidden">
         
-        {/* Form Controls - 8 Cols */}
-        <form onSubmit={handleGenerate} class="lg:col-span-8 glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 space-y-6">
-          <div class="flex items-center justify-between border-b border-white/5 pb-4">
-            <h3 class="font-bold text-base text-slate-200 flex items-center gap-2">
-              <Sliders class="w-4 h-4 text-purple-400" />
-              Configurar Anuncio Comercial
-            </h3>
-            
-            {/* Project Selector inside form */}
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-slate-500 font-semibold">Proyecto:</span>
-              <select
-                class="bg-slate-900 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-300 font-semibold focus:outline-none"
-                value={selectedProject?.id || ''}
-                onChange={e => {
-                  const proj = projects.find(p => p.id === e.target.value);
-                  if (proj) selectProject(proj);
-                }}
-              >
-                <option value="" disabled>Selecciona Proyecto...</option>
-                {projects.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
+        {/* Form Title & Subtitle */}
+        <div className="flex items-start gap-3 border-b border-white/5 pb-5">
+          <div className="w-10 h-10 rounded-xl bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shadow-md">
+            <Sparkles className="w-5 h-5 text-purple-400" />
+          </div>
+          <div>
+            <h3 className="font-bold text-base text-white">Generar Nuevo Anuncio</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Sube un anuncio de referencia y una foto de tu producto</p>
+          </div>
+        </div>
+
+        {/* Double Panel Grid (Referencia & Foto del Producto) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          
+          {/* Left Panel: Referencia */}
+          <div className="space-y-3.5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-200 tracking-wide">Referencia</label>
+              
+              {/* PC Upload */}
+              <label className="cursor-pointer bg-white/5 border border-white/10 hover:border-white/20 text-slate-300 hover:text-white text-[10px] font-extrabold px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5 transition-all">
+                {isUploadingReference ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Upload className="w-3.5 h-3.5" />
+                )}
+                <span>{isUploadingReference ? 'Subiendo...' : 'Subir desde PC'}</span>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleReferenceUpload} 
+                  className="hidden" 
+                  disabled={isUploadingReference}
+                />
+              </label>
+            </div>
+
+            {/* Template Selection Box */}
+            <div className="flex-1 min-h-[180px] flex flex-col justify-center">
+              {selectedTemplateUrl ? (
+                <div className="relative h-44 rounded-2xl overflow-hidden border border-purple-500/30 group shadow-md cursor-pointer" onClick={() => setShowTemplateModal(true)}>
+                  <img src={selectedTemplateUrl} alt="Template composition" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-1.5">
+                    <RefreshCw className="w-4 h-4 text-white" />
+                    <span className="text-[10px] font-extrabold text-white uppercase tracking-wider">Cambiar Plantilla</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedTemplate('');
+                      setCustomImage('');
+                      setSelectedTemplateUrl('');
+                    }}
+                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/80 hover:bg-red-600/90 text-white transition-colors"
+                    title="Quitar plantilla"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div 
+                  onClick={() => setShowTemplateModal(true)}
+                  className="h-44 border-2 border-dashed border-white/10 hover:border-purple-500/50 bg-white/[0.01] hover:bg-purple-500/[0.01] rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 group"
+                >
+                  <div className="w-12 h-12 rounded-full bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:bg-purple-600 group-hover:text-white shadow-lg transition-all duration-300 mb-3">
+                    <FileImage className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-white group-hover:text-purple-400 transition-colors">Seleccionar Plantilla</span>
+                  <span className="text-[10px] text-slate-500 mt-1">de la Galería EcommMagic</span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Hidden selected product logic */}
-          <div class="bg-purple-950/20 border border-purple-500/10 rounded-2xl p-4 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-xl bg-slate-950 overflow-hidden border border-white/10">
-                <img 
-                  src={selectedProductForGen.cover_image} 
-                  alt={selectedProductForGen.name} 
-                  class="w-full h-full object-cover" 
-                  onError={(e) => {
-                    e.target.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80';
-                  }}
-                />
-              </div>
-              <div>
-                <h4 class="text-sm font-bold text-slate-100">{selectedProductForGen.name}</h4>
-                <p class="text-xs text-purple-300">${selectedProductForGen.price} · {selectedProductForGen.category || 'Sin Categoría'}</p>
-              </div>
+          {/* Right Panel: Foto del Producto */}
+          <div className="space-y-3.5">
+            <div>
+              <label className="text-xs font-bold text-slate-200 tracking-wide block">Foto del Producto</label>
+              <span className="text-[10px] text-slate-500 font-medium">(agrega de 1 a 3 fotos de tu producto)</span>
             </div>
-            
+
+            {/* 3 Grid slots */}
+            <div className="grid grid-cols-3 gap-4">
+              {[0, 1, 2].map(index => {
+                const imgUrl = productImages[index];
+                const uploading = slotUploading[index];
+
+                return (
+                  <div key={index} className="aspect-square relative flex items-center justify-center">
+                    {uploading ? (
+                      <div className="absolute inset-0 rounded-2xl bg-slate-950 border border-white/5 flex items-center justify-center">
+                        <RefreshCw className="w-5 h-5 text-purple-400 animate-spin" />
+                      </div>
+                    ) : imgUrl ? (
+                      <div className="absolute inset-0 rounded-2xl overflow-hidden border border-white/10 group shadow-md bg-slate-950">
+                        <img src={imgUrl} alt={`Product ${index + 1}`} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                          <label className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white cursor-pointer transition-colors mr-1">
+                            <Upload className="w-3.5 h-3.5" />
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              onChange={e => handleProductImageUpload(index, e)} 
+                              className="hidden" 
+                            />
+                          </label>
+                          {index > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => removeProductImage(index)}
+                              className="p-1.5 rounded-lg bg-red-600/80 hover:bg-red-600 text-white transition-colors"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="absolute inset-0 border-2 border-dashed border-white/10 hover:border-purple-500/40 bg-white/[0.01] hover:bg-purple-500/[0.01] rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 group">
+                        <Plus className="w-4 h-4 text-slate-500 group-hover:text-purple-400 transition-colors mb-1" />
+                        <span className="text-[9px] font-bold text-slate-500 group-hover:text-slate-300 uppercase tracking-wider">Imagen {index + 1}</span>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={e => handleProductImageUpload(index, e)} 
+                          className="hidden" 
+                        />
+                      </label>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Dropdowns Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+          {/* Format selector */}
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <Maximize2 className="w-3.5 h-3.5 text-purple-400" />
+              <span>Tamaño de salida del anuncio</span>
+            </label>
+            <select 
+              value={format} 
+              onChange={e => setFormat(e.target.value)}
+              className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-4 py-3 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
+            >
+              <option value="1:1">Tamaño Original</option>
+              <option value="1:1">Cuadrado (1:1)</option>
+              <option value="9:16">Vertical (9:16)</option>
+              <option value="16:9">Widescreen (16:9)</option>
+            </select>
+          </div>
+
+          {/* Copy Language selector */}
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <Globe className="w-3.5 h-3.5 text-purple-400" />
+              <span>Idioma del copy anuncio</span>
+            </label>
+            <select 
+              value={language} 
+              onChange={e => setLanguage(e.target.value)}
+              className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-4 py-3 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
+            >
+              <option value="es">Español</option>
+              <option value="en">Inglés</option>
+              <option value="pt">Portugués</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Switches Row */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-4 border-t border-white/5">
+          
+          {/* Engine select switch */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-slate-400">Modelo Ecom Magic</span>
             <button
               type="button"
-              onClick={() => setSelectedProductForGen(null)}
-              class="text-xs text-slate-400 hover:text-white underline font-semibold"
+              onClick={() => setEngine(engine === 'kie-ai' ? 'openai' : 'kie-ai')}
+              className="w-11 h-6 rounded-full bg-slate-950 p-0.5 transition-colors duration-300 relative focus:outline-none border border-white/10"
+              title="Cambiar Motor de Generación"
             >
-              Cambiar producto
+              <div 
+                className={`w-5 h-5 rounded-full bg-purple-500 shadow-md transform duration-300 ${
+                  engine === 'openai' ? 'translate-x-5 bg-indigo-500' : ''
+                }`}
+              />
+            </button>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-400">GPT Image 2</span>
+              <span className="px-1.5 py-0.5 text-[8px] font-extrabold bg-purple-500/25 text-purple-400 border border-purple-500/30 rounded uppercase tracking-wider">Nuevo</span>
+            </div>
+          </div>
+
+          {/* Personalization switch */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-slate-400">Personalizacion del Anuncio</span>
+            <button
+              type="button"
+              onClick={() => setCustomStyleEnabled(!customStyleEnabled)}
+              className="w-11 h-6 rounded-full bg-slate-950 p-0.5 transition-colors duration-300 relative focus:outline-none border border-white/10"
+            >
+              <div 
+                className={`w-5 h-5 rounded-full bg-purple-500 shadow-md transform duration-300 ${
+                  customStyleEnabled ? 'translate-x-5 bg-indigo-500' : ''
+                }`}
+              />
             </button>
           </div>
+        </div>
 
-          {/* Template Selection from Firebase */}
-          <div class="space-y-4">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <label class="text-xs font-semibold text-slate-400 block">Selecciona la Plantilla de Referencia (Composición)</label>
-              
-              {/* Actions & Search */}
-              <div class="flex items-center gap-2">
-                {/* Search input */}
-                <div class="relative">
-                  <Search class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    placeholder="Buscar plantilla..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    class="bg-slate-950/80 border border-white/5 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-purple-500/50 w-36 sm:w-44"
-                  />
-                </div>
-
-                {/* Upload Button */}
-                <label class="cursor-pointer bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-md flex items-center gap-1.5 transition-all">
-                  {isUploading ? (
-                    <RefreshCw class="w-3 h-3 animate-spin" />
-                  ) : (
-                    <Upload class="w-3 h-3" />
-                  )}
-                  <span>{isUploading ? 'Subiendo...' : 'Subir'}</span>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={handleFileUpload} 
-                    class="hidden" 
-                    disabled={isUploading}
-                  />
-                </label>
-              </div>
-            </div>
-
-            {/* Template Grid */}
-            {isLoadingTemplates && firebaseTemplates.length === 0 ? (
-              <div class="flex flex-col items-center justify-center py-10 space-y-2">
-                <RefreshCw class="w-8 h-8 text-purple-400 animate-spin" />
-                <p class="text-xs text-slate-400">Cargando catálogo de plantillas de Firebase...</p>
-              </div>
-            ) : (
-              <div class="space-y-4">
-                {displayedTemplates.length === 0 ? (
-                  <div class="text-center py-8 border border-white/5 rounded-2xl bg-white/[0.01]">
-                    <p class="text-xs text-slate-500">No se encontraron plantillas que coincidan con la búsqueda.</p>
-                  </div>
-                ) : (
-                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {displayedTemplates.map(temp => (
-                      <TemplateCard
-                        key={temp.name}
-                        template={temp}
-                        isSelected={selectedTemplate === temp.name && !customImage}
-                        onSelect={() => {
-                          setSelectedTemplate(temp.name);
-                          setCustomImage('');
-                        }}
-                        getTemplateDownloadUrl={getTemplateDownloadUrl}
-                        onDelete={deleteFirebaseTemplate}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Pagination Controls */}
-                {totalPages > 1 && (
-                  <div class="flex items-center justify-between border-t border-white/5 pt-3">
-                    <span class="text-[10px] text-slate-500">
-                      Mostrando {Math.min(filteredTemplates.length, (currentPage - 1) * itemsPerPage + 1)}-{Math.min(filteredTemplates.length, currentPage * itemsPerPage)} de {filteredTemplates.length} plantillas
-                    </span>
-                    <div class="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={currentPage === 1}
-                        class="p-1.5 rounded-lg border border-white/5 bg-slate-950 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
-                      >
-                        <ChevronLeft class="w-4 h-4" />
-                      </button>
-                      <span class="text-xs text-slate-300 font-medium">{currentPage} / {totalPages}</span>
-                      <button
-                        type="button"
-                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                        disabled={currentPage === totalPages}
-                        class="p-1.5 rounded-lg border border-white/5 bg-slate-950 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
-                      >
-                        <ChevronRight class="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Custom Template URL */}
-            <div class="flex flex-col gap-1.5 pt-2">
-              <label class="text-xs font-medium text-slate-500">O ingresa un enlace directo a otra imagen de referencia</label>
-              <input
-                type="text"
-                placeholder="https://ejemplo.com/tu-propio-anuncio.jpg"
-                class="glass-input text-xs"
-                value={customImage}
-                onChange={e => {
-                  setCustomImage(e.target.value);
-                  setSelectedTemplate('');
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Config & Dropdowns */}
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold text-slate-400">Tamaño del Anuncio</label>
-              <select class="glass-input bg-slate-950" value={format} onChange={e => setFormat(e.target.value)}>
-                <option value="1:1">Cuadrado (1:1 - Feed)</option>
-                <option value="9:16">Vertical (9:16 - Stories/Reels)</option>
-                <option value="16:9">Horizontal (16:9 - Youtube/Display)</option>
-              </select>
-            </div>
-
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold text-slate-400">Idioma de la Redacción</label>
-              <select class="glass-input bg-slate-950" value={language} onChange={e => setLanguage(e.target.value)}>
-                <option value="es">Español</option>
-                <option value="en">Inglés</option>
-                <option value="pt">Portugués</option>
-              </select>
-            </div>
-
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold text-slate-400">Motor de Generación</label>
-              <select class="glass-input bg-slate-950" value={engine} onChange={e => setEngine(e.target.value)}>
-                <option value="kie-ai">Kie.ai (Flux Kontext - Composición)</option>
-                <option value="openai">OpenAI (ChatGPT Imagen 2.0 - Creatividad)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Custom style Prompt */}
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-semibold text-slate-400">Instrucciones Adicionales (Opcional)</label>
-            <input 
-              type="text" 
-              placeholder="Ej: Añadir luces doradas de fondo, resaltar detalles metálicos del producto..." 
-              class="glass-input"
+        {/* Conditional text input for Custom Style directions */}
+        {customStyleEnabled && (
+          <div className="flex flex-col gap-2 pt-2 animate-fadeIn">
+            <label className="text-xs font-bold text-slate-400">Detalles e instrucciones adicionales para la IA</label>
+            <textarea
+              rows="3"
+              placeholder="Ej: Colocar el producto sobre una roca mojada con iluminación de estudio, fondo oscuro y elegante con cascada de agua desenfocada..."
+              className="glass-input resize-none text-xs w-full bg-slate-950/60"
               value={customStyle}
               onChange={e => setCustomStyle(e.target.value)}
             />
           </div>
+        )}
 
-          {/* Generation Trigger Button */}
-          <div class="pt-4 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
-            <span class="text-xs text-slate-500 font-medium flex items-center gap-1.5">
-              <HelpCircle class="w-4 h-4 text-purple-400" />
-              Esta generación consumirá **1 crédito** de tu saldo de creador.
-            </span>
-            
-            <button 
-              type="submit"
-              disabled={isGeneratingImages || !selectedProduct}
-              class="px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-sm font-extrabold text-white rounded-xl shadow-lg shadow-purple-500/25 transition-all transform active:scale-95 disabled:opacity-50 flex items-center gap-2"
-            >
-              {isGeneratingImages ? (
-                <>
-                  <RefreshCw class="w-4 h-4 animate-spin" />
-                  <span>Procesando composición...</span>
-                </>
-              ) : (
-                <>
-                  <Wand2 class="w-4 h-4" />
-                  <span>Generar Anuncio Profesional</span>
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-
-        {/* Live Preview Box - 4 Cols */}
-        <div class="lg:col-span-4 space-y-6">
-          <h3 class="font-bold text-lg text-slate-200">Previsualización del Anuncio</h3>
+        {/* Generate Button Area */}
+        <div className="pt-6 border-t border-white/5 space-y-4 text-center">
+          <button 
+            type="submit"
+            disabled={isGeneratingImages || (!selectedTemplate && !customImage)}
+            className="w-full py-4 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 text-sm font-extrabold text-white rounded-2xl shadow-lg hover:shadow-purple-500/10 transition-all transform active:scale-[0.99] disabled:opacity-30 disabled:hover:from-purple-700 flex items-center justify-center gap-2 group"
+          >
+            <Wand2 className="w-4 h-4 text-purple-200 group-hover:animate-pulse" />
+            <span>Generar Anuncio Profesional</span>
+          </button>
           
-          <div class="glass-panel border border-white/10 rounded-3xl p-6 bg-slate-900/40 text-center flex flex-col items-center justify-center min-h-[400px]">
-            {isGeneratingImages ? (
-              <div class="space-y-4 animate-pulse">
-                <RefreshCw class="w-12 h-12 mx-auto text-purple-400 animate-spin" />
-                <h4 class="text-sm font-bold text-slate-200">Redactando y componiendo...</h4>
-                <p class="text-xs text-slate-500 max-w-[200px] mx-auto">La IA está insertando el producto en el escenario de referencia y escribiendo titulares persuasivos.</p>
-              </div>
-            ) : successImages.length > 0 ? (
-              <div class="space-y-4 w-full">
-                <div class="rounded-2xl overflow-hidden border border-white/10 shadow-lg relative bg-slate-950 aspect-square">
-                  <img src={successImages[0].image_url} alt="Result" class="w-full h-full object-cover" />
-                </div>
-                <div class="flex gap-2">
-                  <a 
-                    href={successImages[0].image_url}
-                    download="creator-shopy-anuncio.webp"
-                    target="_blank"
-                    rel="noreferrer"
-                    class="flex-1 py-3 text-center rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2"
-                  >
-                    <Download class="w-3.5 h-3.5" />
-                    <span>Descargar Imagen</span>
-                  </a>
-                </div>
-              </div>
-            ) : (
-              <div class="space-y-4 text-slate-600">
-                <FileImage class="w-16 h-16 mx-auto stroke-1" />
-                <p class="text-xs max-w-[200px] mx-auto text-slate-400">Selecciona los parámetros de la izquierda y haz clic en "Generar" para ver los resultados.</p>
-              </div>
-            )}
-          </div>
+          <p className="text-[10px] text-slate-500 font-bold tracking-wide uppercase">
+            Esta generación consumirá 1 crédito
+          </p>
         </div>
-      </div>
+      </form>
 
-      {/* History Grid */}
-      {selectedProject && (
-        <div class="space-y-4 pt-6 border-t border-white/5">
-          <h3 class="font-bold text-lg text-slate-200">Historial de Banners del Proyecto</h3>
-          {generatedImages.length === 0 ? (
-            <p class="text-sm text-slate-500">No hay banners generados para este proyecto.</p>
-          ) : (
-            <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
-              {generatedImages.map(img => (
-                <div 
-                  key={img.id} 
-                  class="glass-panel border border-white/10 rounded-2xl overflow-hidden bg-slate-950 group relative aspect-square"
-                >
-                  <img src={img.image_url} alt="Generated ad" class="w-full h-full object-cover transition-transform group-hover:scale-105 duration-300" />
-                  <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-between">
-                    <div class="flex justify-end">
-                      <span class="bg-purple-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">{img.model}</span>
-                    </div>
-                    <div class="flex justify-between items-center text-white">
-                      <span class="text-[9px] truncate max-w-[80px] font-semibold">{img.prompt}</span>
-                      <a href={img.image_url} download class="p-1 rounded bg-white/20 text-white hover:bg-white/40"><Download class="w-3.5 h-3.5" /></a>
+      {/* History Grid ("Anuncios Generados") */}
+      <div className="space-y-4 pt-10">
+        <h3 className="font-extrabold text-xl text-white text-center tracking-tight">
+          Anuncios Generados
+        </h3>
+        
+        {productBanners.length === 0 ? (
+          <div className="glass-panel border border-white/5 rounded-3xl p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
+            <div className="w-16 h-16 rounded-2xl bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4 shadow-lg shadow-purple-500/5">
+              <FileImage className="w-8 h-8 stroke-1.5" />
+            </div>
+            <h4 className="font-bold text-lg text-slate-100 mb-1">Aún no hay banners</h4>
+            <p className="text-xs text-slate-500 max-w-[280px]">Genera tu primer anuncio profesional para ver los resultados aquí.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+            {productBanners.map(img => (
+              <div 
+                key={img.id} 
+                className="glass-panel border border-white/10 rounded-2xl overflow-hidden bg-slate-950 group relative aspect-square shadow-md hover:scale-[1.01] transition-transform duration-300"
+              >
+                <img src={img.image_url} alt="Generated ad" className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" />
+                
+                {/* Image Details Hover Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-4 flex flex-col justify-between">
+                  <div className="flex justify-end">
+                    <span className="bg-purple-600 text-white text-[8px] px-2 py-0.5 rounded font-extrabold uppercase tracking-wide border border-purple-400">{img.model}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-white">
+                    <span className="text-[10px] truncate max-w-[120px] font-semibold">{img.prompt}</span>
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={() => {
+                          setSuccessImages([img]);
+                          setShowSuccessModal(true);
+                        }}
+                        className="p-1.5 rounded bg-white/10 text-white hover:bg-white/20 transition-colors"
+                        title="Ver detalle"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                      <a 
+                        href={img.image_url} 
+                        download 
+                        className="p-1.5 rounded bg-white/10 text-white hover:bg-white/20 transition-colors"
+                        title="Descargar"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </a>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Template Selection Modal */}
+      <TemplateSelectionModal
+        isOpen={showTemplateModal}
+        onClose={() => setShowTemplateModal(false)}
+        templates={firebaseTemplates}
+        onSelect={(name) => {
+          setSelectedTemplate(name);
+          setCustomImage('');
+        }}
+        getTemplateDownloadUrl={getTemplateDownloadUrl}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        isUploading={isUploading}
+        handleFileUpload={handleFileUpload}
+      />
+
+      {/* Videotutorial Modal */}
+      <TutorialModal
+        isOpen={showTutorialModal}
+        onClose={() => setShowTutorialModal(false)}
+      />
+
+      {/* Success Banner Popup */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        imageUrl={successImages[0]?.image_url}
+        productName={selectedProductForGen?.name}
+      />
     </div>
   );
 }

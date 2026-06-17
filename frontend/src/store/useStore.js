@@ -302,14 +302,13 @@ export const useStore = create((set, get) => ({
     }
   },
 
-  // Image Generation
-  generateImages: async (producto, estilo, formato, cantidad, projectId, engine = 'kie-ai', referenceImage = '') => {
+  generateImages: async (producto, estilo, formato, cantidad, projectId, engine = 'kie-ai', referenceImage = '', productImage = '') => {
     set({ isGeneratingImages: true });
     try {
       const response = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: getHeaders(get().token),
-        body: JSON.stringify({ producto, estilo, formato, cantidad, projectId, engine, referenceImage })
+        body: JSON.stringify({ producto, estilo, formato, cantidad, projectId, engine, referenceImage, productImage })
       });
       const data = await response.json();
       

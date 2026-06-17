@@ -21,7 +21,8 @@ const generateSchema = z.object({
   cantidad: z.number().min(1).max(4).default(1),
   projectId: z.string().uuid(),
   engine: z.enum(['kie-ai', 'openai']).default('kie-ai'),
-  referenceImage: z.string().optional()
+  referenceImage: z.string().optional(),
+  productImage: z.string().optional()
 });
 
 /**
@@ -177,12 +178,17 @@ router.post('/generate', requireAuth, async (req, res) => {
             }
 
             console.log(`[Kie.ai] Submitting job with prompt: ${prompt}`);
-            const response = await axios.post(`${KIE_BASE_URL}/api/v1/flux/kontext/generate`, {
+            const payload = {
               prompt: prompt,
               model: 'flux-kontext-pro',
               aspectRatio: validated.formato,
               enableTranslation: true
-            }, {
+            };
+            if (validated.productImage) {
+              payload.inputImage = validated.productImage;
+            }
+
+            const response = await axios.post(`${KIE_BASE_URL}/api/v1/flux/kontext/generate`, payload, {
               headers: {
                 'Authorization': `Bearer ${KIE_API_KEY}`,
                 'Content-Type': 'application/json'
