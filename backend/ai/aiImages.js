@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { supabase } from '../server.js';
+import { supabaseAdmin as supabase } from '../server.js';
 import { requireAuth } from '../middleware/auth.js';
 import axios from 'axios';
 import { z } from 'zod';
