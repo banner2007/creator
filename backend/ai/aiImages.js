@@ -135,6 +135,27 @@ async function uploadToSupabase(imageUrl, projectId) {
 }
 
 /**
+ * @route   GET /api/ai/debug
+ * @desc    Debug environment variables for image generation (safe, no keys leaked)
+ */
+router.get('/debug', (req, res) => {
+  const KIE_API_KEY = process.env.KIE_API_KEY || process.env.ap;
+  const OPENAI_API_KEY = process.env.OPENAI_API_KEY || process.env.API;
+  res.json({
+    hasKieKey: !!KIE_API_KEY && KIE_API_KEY !== 'your-kie-ai-api-key',
+    hasOpenAiKey: !!OPENAI_API_KEY && !OPENAI_API_KEY.includes('your-'),
+    kieKeyLength: KIE_API_KEY ? KIE_API_KEY.length : 0,
+    openAiKeyLength: OPENAI_API_KEY ? OPENAI_API_KEY.length : 0,
+    envKeysPresent: Object.keys(process.env).filter(k => 
+      k.toLowerCase().includes('key') || 
+      k.toLowerCase().includes('api') || 
+      k === 'ap' ||
+      k === 'API'
+    )
+  });
+});
+
+/**
  * @route   POST /api/ai/generate
  * @desc    Generate commercial product images using Kie.ai or OpenAI DALL-E 3
  */
