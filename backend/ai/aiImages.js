@@ -181,9 +181,8 @@ async function uploadToSupabase(imageUrl, projectId) {
 
     return publicUrl;
   } catch (err) {
-    console.error('[Storage] Upload to Supabase failed, returning original URL/Base64 stub:', err.message);
-    // Return original image URL if it's a URL, or null if it's raw base64 (to avoid inserting huge base64 into DB)
-    return imageUrl.length < 2000 ? imageUrl : null;
+    console.error('[Storage] Upload to Supabase failed:', err.message);
+    throw new Error(`Fallo al subir a Supabase Storage: ${err.message}`);
   }
 }
 
