@@ -76,27 +76,53 @@ async function generateOpenAIImage(prompt, ratio) {
     throw new Error('OpenAI API Key is missing or invalid in server config.');
   }
 
-  // Convert ratio to gpt-image-2 format (1024x1024, 1792x1024, or 1024x1792)
+  // Convert ratio to dimensions
   let size = '1024x1024';
   if (ratio === '16:9') size = '1792x1024';
   else if (ratio === '9:16') size = '1024x1792';
 
-  console.log(`[OpenAI gpt-image-2] Requesting image generation, size: ${size}...`);
-  const response = await axios.post(OPENAI_URL, {
-    model: 'dall-e-3',
-    prompt: prompt,
-    n: 1,
-    size: size
-  }, {
-    headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json'
-    }
-  });
+  // 1. Try to generate with gpt-image-2 (ChatGPT Imagen 2.0)
+  try {
+    console.log(`[OpenAI] Trying to generate with gpt-image-2, size: ${size}...`);
+    const response = await axios.post(OPENAI_URL, {
+      model: 'gpt-image-2',
+      prompt: prompt,
+      n: 1,
+      size: size,
+      response_format: 'b64_json' // gpt-image-2 prefers base64
+    }, {
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
-  const url = response.data.data[0].url;
-  console.log(`[OpenAI gpt-image-2] Image generated: ${url}`);
-  return url;
+    const urlOrB64 = response.data?.data?.[0]?.b64_json || response.data?.data?.[0]?.url;
+    if (!urlOrB64) throw new Error('No image URL or Base64 returned from gpt-image-2');
+    console.log(`[OpenAI gpt-image-2] Generation succeeded!`);
+    return { url: urlOrB64, model: 'gpt-image-2' };
+  } catch (err) {
+    const errorMsg = err.response?.data?.error?.message || err.message;
+    console.warn(`[OpenAI] gpt-image-2 failed: ${errorMsg}. Falling back to dall-e-3...`);
+    
+    // 2. Fallback to dall-e-3
+    const response = await axios.post(OPENAI_URL, {
+      model: 'dall-e-3',
+      prompt: prompt,
+      n: 1,
+      size: size
+    }, {
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const url = response.data?.data?.[0]?.url;
+    if (!url) throw new Error('No image URL returned from dall-e-3 fallback');
+    console.log(`[OpenAI dall-e-3] Fallback generation succeeded!`);
+    return { url, model: 'dall-e-3' };
+  }
 }
 
 /**
@@ -109,22 +135,41 @@ function getFallbackImage(product, style, ratio) {
 }
 
 /**
- * Download image from URL and upload to Supabase Storage
+ * Download image from URL or parse base64 and upload to Supabase Storage
  */
 async function uploadToSupabase(imageUrl, projectId) {
   try {
-    console.log(`[Storage] Downloading image: ${imageUrl}`);
-    const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-    const buffer = Buffer.from(response.data, 'binary');
+    if (!imageUrl) throw new Error('No image content to upload');
+    
+    let buffer;
+    let contentType = 'image/webp';
 
-    const ext = 'webp';
+    const isUrl = imageUrl.startsWith('http://') || imageUrl.startsWith('https://');
+    
+    if (isUrl) {
+      console.log(`[Storage] Downloading image from URL: ${imageUrl}`);
+      const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+      buffer = Buffer.from(response.data, 'binary');
+    } else {
+      console.log(`[Storage] Handling base64 image data`);
+      const matches = imageUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (matches && matches.length === 3) {
+        contentType = matches[1];
+        buffer = Buffer.from(matches[2], 'base64');
+      } else {
+        // Raw base64 string
+        buffer = Buffer.from(imageUrl, 'base64');
+      }
+    }
+
+    const ext = contentType.split('/')[1] || 'webp';
     const filename = `images/${projectId}/${Date.now()}-${Math.floor(Math.random() * 100000)}.${ext}`;
 
     console.log(`[Storage] Uploading to Supabase bucket 'generated-images' as ${filename}`);
     const { data, error } = await supabase.storage
       .from('generated-images')
       .upload(filename, buffer, {
-        contentType: 'image/webp',
+        contentType: contentType,
         cacheControl: '3600',
         upsert: true
       });
@@ -137,8 +182,9 @@ async function uploadToSupabase(imageUrl, projectId) {
 
     return publicUrl;
   } catch (err) {
-    console.error('[Storage] Upload to Supabase failed, returning original URL:', err.message);
-    return imageUrl;
+    console.error('[Storage] Upload to Supabase failed, returning original URL/Base64 stub:', err.message);
+    // Return original image URL if it's a URL, or null if it's raw base64 (to avoid inserting huge base64 into DB)
+    return imageUrl.length < 2000 ? imageUrl : null;
   }
 }
 
@@ -169,6 +215,7 @@ router.post('/generate', requireAuth, async (req, res) => {
     }
 
     const generatedUrls = [];
+    const modelsUsed = [];
     const isKie = validated.engine === 'kie-ai';
 
     console.log(`[AI Gen] Generating ${validated.cantidad} images via ${validated.engine}.`);
@@ -228,6 +275,7 @@ router.post('/generate', requireAuth, async (req, res) => {
           if (code === 200 && data?.taskId) {
             const rawUrl = await pollKieTask(data.taskId, KIE_API_KEY);
             finalUrl = await uploadToSupabase(rawUrl, validated.projectId);
+            modelsUsed.push('flux-kontext-pro');
           } else {
             console.error(`[AI Gen] Kie.ai task submission failed: ${msg}`);
             return res.status(400).json({ error: `Fallo al iniciar tarea de Kie.ai: ${msg || 'Error desconocido'}` });
@@ -247,10 +295,11 @@ router.post('/generate', requireAuth, async (req, res) => {
           } else {
             dallePrompt += ` Medium quality, standard studio lighting.`;
           }
-          const rawUrl = await generateOpenAIImage(dallePrompt, validated.formato);
-          finalUrl = await uploadToSupabase(rawUrl, validated.projectId);
+          const { url, model } = await generateOpenAIImage(dallePrompt, validated.formato);
+          finalUrl = await uploadToSupabase(url, validated.projectId);
+          modelsUsed.push(model);
         } catch (err) {
-          console.error('[AI Gen] OpenAI DALL-E 3 failed:', err.message);
+          console.error('[AI Gen] OpenAI generation failed:', err.message);
           return res.status(500).json({ error: `Error durante la generación con OpenAI: ${err.message}` });
         }
       }
@@ -266,10 +315,10 @@ router.post('/generate', requireAuth, async (req, res) => {
       .eq('id', userId);
 
     // 3. Save to database
-    const dbRecords = generatedUrls.map(url => ({
+    const dbRecords = generatedUrls.map((url, index) => ({
       project_id: validated.projectId,
       prompt: validated.producto,
-      model: isKie ? 'flux-kontext-pro' : 'dall-e-3',
+      model: modelsUsed[index] || (isKie ? 'flux-kontext-pro' : 'dall-e-3'),
       resolution: validated.formato,
       image_url: url
     }));
