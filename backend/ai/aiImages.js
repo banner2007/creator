@@ -83,7 +83,7 @@ async function generateOpenAIImage(prompt, ratio) {
 
   console.log(`[OpenAI gpt-image-2] Requesting image generation, size: ${size}...`);
   const response = await axios.post(OPENAI_URL, {
-    model: 'gpt-image-2',
+    model: 'dall-e-3',
     prompt: prompt,
     n: 1,
     size: size
@@ -269,7 +269,7 @@ router.post('/generate', requireAuth, async (req, res) => {
     const dbRecords = generatedUrls.map(url => ({
       project_id: validated.projectId,
       prompt: validated.producto,
-      model: isKie ? 'flux-kontext-pro' : 'gpt-image-2',
+      model: isKie ? 'flux-kontext-pro' : 'dall-e-3',
       resolution: validated.formato,
       image_url: url
     }));
