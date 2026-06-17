@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
 import { useStore } from './store/useStore.js';
-import { LayoutDashboard, PenTool, Image, LogOut, Moon, Sun, ShieldAlert, Sparkles, CreditCard, Layers } from 'lucide-react';
+import { LayoutDashboard, PenTool, Image, LogOut, Moon, Sun, ShieldAlert, Sparkles, CreditCard, Layers, Folder, Megaphone, BrainCircuit, Calculator } from 'lucide-react';
 import Dashboard from './pages/Dashboard.jsx';
 import BuilderPage from './pages/BuilderPage.jsx';
 import ImageGenPage from './pages/ImageGenPage.jsx';
+import ProductsPage from './pages/ProductsPage.jsx';
+import AdGenPage from './pages/AdGenPage.jsx';
+import LandingGenPage from './pages/LandingGenPage.jsx';
+import MarketResearchPage from './pages/MarketResearchPage.jsx';
+import FinancialPage from './pages/FinancialPage.jsx';
 
 function AuthGuard({ children }) {
   const token = useStore((state) => state.token);
@@ -169,18 +174,38 @@ function MainLayout() {
           </div>
 
           {/* Links */}
-          <nav class="space-y-2">
-            <Link to="/" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
-              <LayoutDashboard class="w-5 h-5" />
-              <span class="text-sm font-semibold">Proyectos</span>
+          <nav class="space-y-1 max-h-[60vh] overflow-y-auto pr-1">
+            <Link to="/" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <LayoutDashboard class="w-4 h-4" />
+              <span class="text-xs font-semibold">Proyectos</span>
             </Link>
-            <Link to="/builder" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
-              <PenTool class="w-5 h-5" />
-              <span class="text-sm font-semibold">Constructor</span>
+            <Link to="/builder" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <PenTool class="w-4 h-4" />
+              <span class="text-xs font-semibold">Constructor</span>
             </Link>
-            <Link to="/ai" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
-              <Image class="w-5 h-5" />
-              <span class="text-sm font-semibold">Estudio IA</span>
+            <Link to="/products" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <Folder class="w-4 h-4" />
+              <span class="text-xs font-semibold">Mis Productos</span>
+            </Link>
+            <Link to="/ad-generator" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <Megaphone class="w-4 h-4" />
+              <span class="text-xs font-semibold">Generador Anuncios</span>
+            </Link>
+            <Link to="/landing-generator" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <Layers class="w-4 h-4" />
+              <span class="text-xs font-semibold">Generador Landings</span>
+            </Link>
+            <Link to="/research" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <BrainCircuit class="w-4 h-4" />
+              <span class="text-xs font-semibold">Investigación IA</span>
+            </Link>
+            <Link to="/financial" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <Calculator class="w-4 h-4" />
+              <span class="text-xs font-semibold">Análisis Financiero</span>
+            </Link>
+            <Link to="/ai" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <Image class="w-4 h-4" />
+              <span class="text-xs font-semibold">Estudio IA (Libre)</span>
             </Link>
           </nav>
         </div>
@@ -223,19 +248,27 @@ function MainLayout() {
             <Sparkles class="w-5 h-5 text-purple-500" />
             <span class="font-bold text-sm">Creator Shopy</span>
           </div>
-          <div class="flex gap-4">
-            <Link to="/" class="text-slate-400 hover:text-white"><LayoutDashboard class="w-5 h-5" /></Link>
-            <Link to="/builder" class="text-slate-400 hover:text-white"><PenTool class="w-5 h-5" /></Link>
-            <Link to="/ai" class="text-slate-400 hover:text-white"><Image class="w-5 h-5" /></Link>
-            <button onClick={logout} class="text-red-400"><LogOut class="w-5 h-5" /></button>
+          <div class="flex gap-3.5 flex-wrap justify-end">
+            <Link to="/" class="text-slate-400 hover:text-white" title="Proyectos"><LayoutDashboard class="w-4.5 h-4.5" /></Link>
+            <Link to="/products" class="text-slate-400 hover:text-white" title="Productos"><Folder class="w-4.5 h-4.5" /></Link>
+            <Link to="/ad-generator" class="text-slate-400 hover:text-white" title="Anuncios"><Megaphone class="w-4.5 h-4.5" /></Link>
+            <Link to="/landing-generator" class="text-slate-400 hover:text-white" title="Landings"><Layers class="w-4.5 h-4.5" /></Link>
+            <Link to="/research" class="text-slate-400 hover:text-white" title="Investigación"><BrainCircuit class="w-4.5 h-4.5" /></Link>
+            <Link to="/financial" class="text-slate-400 hover:text-white" title="Finanzas"><Calculator class="w-4.5 h-4.5" /></Link>
+            <button onClick={logout} class="text-red-400" title="Salir"><LogOut class="w-4.5 h-4.5" /></button>
           </div>
         </header>
 
         {/* View Content */}
-        <main class="flex-1 relative z-10">
+        <main class="flex-1 relative z-10 font-sans">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/builder" element={<BuilderPage />} />
+            <Route path="/products" element={<ProductsPage />} />
+            <Route path="/ad-generator" element={<AdGenPage />} />
+            <Route path="/landing-generator" element={<LandingGenPage />} />
+            <Route path="/research" element={<MarketResearchPage />} />
+            <Route path="/financial" element={<FinancialPage />} />
             <Route path="/ai" element={<ImageGenPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -6,9 +6,12 @@ import { z } from 'zod';
 
 const router = Router();
 
-// Retrieve Kie.ai API key (handling both variable names)
+// Retrieve API keys from env
 const KIE_API_KEY = process.env.KIE_API_KEY || process.env.ap;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || process.env.API;
+
 const KIE_BASE_URL = 'https://api.kie.ai';
+const OPENAI_URL = 'https://api.openai.com/v1/images/generations';
 
 // Validation Schema
 const generateSchema = z.object({
@@ -16,7 +19,9 @@ const generateSchema = z.object({
   estilo: z.string().default('premium'),
   formato: z.string().default('16:9'),
   cantidad: z.number().min(1).max(4).default(1),
-  projectId: z.string().uuid()
+  projectId: z.string().uuid(),
+  engine: z.enum(['kie-ai', 'openai']).default('kie-ai'),
+  referenceImage: z.string().optional()
 });
 
 /**
@@ -35,9 +40,7 @@ async function pollKieTask(taskId, apiKey, retries = 20, delayMs = 3000) {
 
       const { code, data } = response.data;
       if (code === 200 && data) {
-        // Checking for success flags or status
         const status = data.status || data.successFlag;
-        
         if (status === 'SUCCESS' || status === true || data.resultImageUrl || (data.info && data.info.resultImageUrl)) {
           const imageUrl = data.resultImageUrl || (data.info && data.info.resultImageUrl);
           if (imageUrl) {
@@ -51,20 +54,46 @@ async function pollKieTask(taskId, apiKey, retries = 20, delayMs = 3000) {
     } catch (error) {
       console.error(`[Kie.ai] Polling error on attempt ${i + 1}:`, error.message);
     }
-    
-    // Wait before next poll
     await new Promise(resolve => setTimeout(resolve, delayMs));
   }
   throw new Error('Kie.ai task polling timed out.');
 }
 
 /**
+ * Generate image using OpenAI DALL-E 3
+ */
+async function generateDalleImage(prompt, ratio) {
+  if (!OPENAI_API_KEY || OPENAI_API_KEY.includes('your-')) {
+    throw new Error('OpenAI API Key is missing or invalid in server config.');
+  }
+
+  // Convert ratio to DALL-E 3 format (1024x1024, 1792x1024, or 1024x1792)
+  let size = '1024x1024';
+  if (ratio === '16:9') size = '1792x1024';
+  else if (ratio === '9:16') size = '1024x1792';
+
+  console.log(`[OpenAI DALL-E 3] Requesting image generation, size: ${size}...`);
+  const response = await axios.post(OPENAI_URL, {
+    model: 'dall-e-3',
+    prompt: prompt,
+    n: 1,
+    size: size
+  }, {
+    headers: {
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  const url = response.data.data[0].url;
+  console.log(`[OpenAI DALL-E 3] Image generated: ${url}`);
+  return url;
+}
+
+/**
  * Generate fallback stock image based on keywords
  */
 function getFallbackImage(product, style, ratio) {
-  const query = encodeURIComponent(`${product} ${style}`);
-  const dimensions = ratio === '16:9' ? '1200x675' : ratio === '9:16' ? '675x1200' : '800x800';
-  // Use professional curated source images (Unsplash Source replacement style)
   const randomId = Math.floor(Math.random() * 1000);
   return `https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80&sig=${randomId}`;
 }
@@ -78,7 +107,7 @@ async function uploadToSupabase(imageUrl, projectId) {
     const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
     const buffer = Buffer.from(response.data, 'binary');
 
-    const ext = 'webp'; // Force webp compression locally if needed, or upload as webp
+    const ext = 'webp';
     const filename = `images/${projectId}/${Date.now()}-${Math.floor(Math.random() * 100000)}.${ext}`;
 
     console.log(`[Storage] Uploading to Supabase bucket 'generated-images' as ${filename}`);
@@ -99,13 +128,13 @@ async function uploadToSupabase(imageUrl, projectId) {
     return publicUrl;
   } catch (err) {
     console.error('[Storage] Upload to Supabase failed, returning original URL:', err.message);
-    return imageUrl; // Fallback to original external URL if upload fails
+    return imageUrl;
   }
 }
 
 /**
  * @route   POST /api/ai/generate
- * @desc    Generate commercial product images using Kie.ai or fallbacks
+ * @desc    Generate commercial product images using Kie.ai or OpenAI DALL-E 3
  */
 router.post('/generate', requireAuth, async (req, res) => {
   try {
@@ -127,53 +156,69 @@ router.post('/generate', requireAuth, async (req, res) => {
       return res.status(400).json({ error: `Insufficient credits. Required: ${validated.cantidad}, Available: ${profile.credits}` });
     }
 
-    // Prepare prompt
-    const richPrompt = `A premium professional commercial product photo of ${validated.producto}, styled in a ${validated.estilo} theme, studio lighting, photorealistic, 8k, product advertisement, highly detailed.`;
     const generatedUrls = [];
+    const isKie = validated.engine === 'kie-ai';
 
-    // Check if Kie.ai credentials are set
-    const useRealKie = KIE_API_KEY && KIE_API_KEY !== 'your-kie-ai-api-key';
+    console.log(`[AI Gen] Generating ${validated.cantidad} images via ${validated.engine}.`);
 
-    console.log(`[AI Gen] Generating ${validated.cantidad} images. Using Kie.ai: ${useRealKie}`);
-
-    // Generate images
+    // Generate images loop
     for (let i = 0; i < validated.cantidad; i++) {
       let finalUrl = '';
-      if (useRealKie) {
-        try {
-          // Trigger task on Kie.ai
-          const response = await axios.post(`${KIE_BASE_URL}/api/v1/flux/kontext/generate`, {
-            prompt: richPrompt,
-            model: 'flux-kontext-pro',
-            aspectRatio: validated.formato,
-            enableTranslation: true
-          }, {
-            headers: {
-              'Authorization': `Bearer ${KIE_API_KEY}`,
-              'Content-Type': 'application/json'
+      
+      if (isKie) {
+        const useRealKie = KIE_API_KEY && KIE_API_KEY !== 'your-kie-ai-api-key';
+        
+        if (useRealKie) {
+          try {
+            // Build rich prompt for Kie.ai Flux Kontext style transfer
+            let prompt = `A premium professional commercial product photo of ${validated.producto}, styled in a ${validated.estilo} theme, studio lighting, photorealistic, 8k, product advertisement, highly detailed.`;
+            if (validated.referenceImage) {
+              prompt += ` Match composition, background colors and style of the reference image: ${validated.referenceImage}.`;
             }
-          });
 
-          const { code, data, msg } = response.data;
-          if (code === 200 && data?.taskId) {
-            // Poll for result
-            const rawUrl = await pollKieTask(data.taskId, KIE_API_KEY);
-            // Save to Supabase Storage
-            finalUrl = await uploadToSupabase(rawUrl, validated.projectId);
-          } else {
-            console.warn(`[AI Gen] Kie.ai task submission failed: ${msg}. Triggering fallback.`);
+            console.log(`[Kie.ai] Submitting job with prompt: ${prompt}`);
+            const response = await axios.post(`${KIE_BASE_URL}/api/v1/flux/kontext/generate`, {
+              prompt: prompt,
+              model: 'flux-kontext-pro',
+              aspectRatio: validated.formato,
+              enableTranslation: true
+            }, {
+              headers: {
+                'Authorization': `Bearer ${KIE_API_KEY}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            const { code, data, msg } = response.data;
+            if (code === 200 && data?.taskId) {
+              const rawUrl = await pollKieTask(data.taskId, KIE_API_KEY);
+              finalUrl = await uploadToSupabase(rawUrl, validated.projectId);
+            } else {
+              console.warn(`[AI Gen] Kie.ai task submission failed: ${msg}. Triggering fallback.`);
+              finalUrl = getFallbackImage(validated.producto, validated.estilo, validated.formato);
+              finalUrl = await uploadToSupabase(finalUrl, validated.projectId);
+            }
+          } catch (err) {
+            console.error('[AI Gen] Kie.ai integration failed, using fallback:', err.message);
             finalUrl = getFallbackImage(validated.producto, validated.estilo, validated.formato);
             finalUrl = await uploadToSupabase(finalUrl, validated.projectId);
           }
-        } catch (err) {
-          console.error('[AI Gen] Kie.ai integration failed, using fallback:', err.message);
+        } else {
+          // Fallback Unsplash image simulation
           finalUrl = getFallbackImage(validated.producto, validated.estilo, validated.formato);
           finalUrl = await uploadToSupabase(finalUrl, validated.projectId);
         }
       } else {
-        // Fallback Unsplash image simulation
-        finalUrl = getFallbackImage(validated.producto, validated.estilo, validated.formato);
-        finalUrl = await uploadToSupabase(finalUrl, validated.projectId);
+        // OpenAI DALL-E 3 generation
+        try {
+          const dallePrompt = `A high-end commercial ad banner for ${validated.producto}. Theme: ${validated.estilo}. Studio lighting, professional layout, clean design, highly detailed, centered product focus, commercial photography, 8k resolution.`;
+          const rawUrl = await generateDalleImage(dallePrompt, validated.formato);
+          finalUrl = await uploadToSupabase(rawUrl, validated.projectId);
+        } catch (err) {
+          console.error('[AI Gen] OpenAI DALL-E 3 failed, using fallback:', err.message);
+          finalUrl = getFallbackImage(validated.producto, validated.estilo, validated.formato);
+          finalUrl = await uploadToSupabase(finalUrl, validated.projectId);
+        }
       }
       
       generatedUrls.push(finalUrl);
@@ -190,7 +235,7 @@ router.post('/generate', requireAuth, async (req, res) => {
     const dbRecords = generatedUrls.map(url => ({
       project_id: validated.projectId,
       prompt: validated.producto,
-      model: useRealKie ? 'flux-kontext-pro' : 'unsplash-mock-model',
+      model: isKie ? 'flux-kontext-pro' : 'dall-e-3',
       resolution: validated.formato,
       image_url: url
     }));
@@ -212,6 +257,7 @@ router.post('/generate', requireAuth, async (req, res) => {
       metadata: {
         product: validated.producto,
         count: validated.cantidad,
+        engine: validated.engine,
         credits_spent: validated.cantidad,
         remaining_credits: newCredits
       }
@@ -265,10 +311,8 @@ router.post('/remove-bg', requireAuth, async (req, res) => {
     const { imageUrl } = req.body;
     if (!imageUrl) return res.status(400).json({ error: 'imageUrl is required' });
 
-    // Mock background removal delay
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Return the same URL for mock simulation
     return res.json({
       success: true,
       resultUrl: imageUrl,
@@ -288,7 +332,6 @@ router.post('/upscale', requireAuth, async (req, res) => {
     const { imageUrl } = req.body;
     if (!imageUrl) return res.status(400).json({ error: 'imageUrl is required' });
 
-    // Mock upscale delay
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     return res.json({

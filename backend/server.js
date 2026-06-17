@@ -57,6 +57,8 @@ import aiRouter from './ai/aiImages.js';
 import landingRouter from './landing/landingBuilder.js';
 import publishRouter from './publish/publish.js';
 import analyticsRouter from './analytics/analytics.js';
+import productsRouter from './landing/products.js';
+import researchRouter from './ai/research.js';
 
 // Register Modular Routers
 app.use('/api/auth', authRouter);
@@ -64,6 +66,8 @@ app.use('/api/ai', aiRouter);
 app.use('/api/landing', landingRouter);
 app.use('/api/publish', publishRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/products', productsRouter);
+app.use('/api/ai/research', researchRouter);
 
 // Wildcard route to serve published HTML pages under subdomains or preview path
 app.get('/published/:slug', async (req, res) => {

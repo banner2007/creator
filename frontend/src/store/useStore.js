@@ -17,6 +17,9 @@ export const useStore = create((set, get) => ({
   landings: [],
   selectedLanding: null,
   sections: [], // Active landing page sections
+  products: [],
+  selectedProduct: null,
+  isResearching: false,
   
   // AI state
   generatedImages: [],
@@ -38,7 +41,7 @@ export const useStore = create((set, get) => ({
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    set({ token: null, user: null, projects: [], landings: [], selectedLanding: null, sections: [] });
+    set({ token: null, user: null, projects: [], landings: [], selectedLanding: null, sections: [], products: [], selectedProduct: null });
   },
   
   updateUserCredits: (credits) => {
@@ -248,13 +251,13 @@ export const useStore = create((set, get) => ({
   },
 
   // Image Generation
-  generateImages: async (producto, estilo, formato, cantidad, projectId) => {
+  generateImages: async (producto, estilo, formato, cantidad, projectId, engine = 'kie-ai', referenceImage = '') => {
     set({ isGeneratingImages: true });
     try {
       const response = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: getHeaders(get().token),
-        body: JSON.stringify({ producto, estilo, formato, cantidad, projectId })
+        body: JSON.stringify({ producto, estilo, formato, cantidad, projectId, engine, referenceImage })
       });
       const data = await response.json();
       
@@ -286,6 +289,112 @@ export const useStore = create((set, get) => ({
     } catch (err) {
       console.error('Error fetching images:', err);
     }
+  },
+
+  // Products CRUD Actions
+  fetchProducts: async () => {
+    try {
+      const response = await fetch('/api/products', {
+        headers: getHeaders(get().token)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        set({ products: data });
+        if (data.length > 0 && !get().selectedProduct) {
+          set({ selectedProduct: data[0] });
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching products:', err);
+    }
+  },
+
+  createProduct: async (productData) => {
+    try {
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: getHeaders(get().token),
+        body: JSON.stringify(productData)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        set(state => ({ products: [data, ...state.products], selectedProduct: data }));
+        return data;
+      } else {
+        alert(data.error || 'Error creando el producto');
+      }
+    } catch (err) {
+      console.error('Error creating product:', err);
+    }
+  },
+
+  updateProduct: async (id, productData) => {
+    try {
+      const response = await fetch(`/api/products/${id}`, {
+        method: 'PUT',
+        headers: getHeaders(get().token),
+        body: JSON.stringify(productData)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        const updatedProducts = get().products.map(p => p.id === id ? data : p);
+        set({ products: updatedProducts, selectedProduct: data });
+        return data;
+      } else {
+        alert(data.error || 'Error actualizando el producto');
+      }
+    } catch (err) {
+      console.error('Error updating product:', err);
+    }
+  },
+
+  deleteProduct: async (id) => {
+    try {
+      const response = await fetch(`/api/products/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders(get().token)
+      });
+      if (response.ok) {
+        const updatedProducts = get().products.filter(p => p.id !== id);
+        set(state => ({
+          products: updatedProducts,
+          selectedProduct: state.selectedProduct?.id === id ? (updatedProducts[0] || null) : state.selectedProduct
+        }));
+        return true;
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Error eliminando el producto');
+      }
+    } catch (err) {
+      console.error('Error deleting product:', err);
+    }
+    return false;
+  },
+
+  selectProduct: (product) => set({ selectedProduct: product }),
+
+  // OpenAI Research Actions
+  runResearch: async (type, productId) => {
+    set({ isResearching: true });
+    try {
+      const response = await fetch(`/api/ai/research/${type}`, {
+        method: 'POST',
+        headers: getHeaders(get().token),
+        body: JSON.stringify({ productId })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        get().updateUserCredits(data.creditsLeft);
+        return data.report;
+      } else {
+        alert(data.error || `Error ejecutando investigación de ${type}`);
+      }
+    } catch (err) {
+      console.error(`Error researching ${type}:`, err);
+    } finally {
+      set({ isResearching: false });
+    }
+    return null;
   },
 
   setPreviewMode: (previewMode) => set({ previewMode }),
