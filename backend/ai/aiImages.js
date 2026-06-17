@@ -239,6 +239,7 @@ router.post('/generate', requireAuth, async (req, res) => {
         try {
           // Build rich prompt for Kie.ai Flux Kontext style transfer
           let prompt = `A premium professional commercial product photo of ${validated.producto}, styled in a ${validated.estilo} theme, studio lighting, photorealistic, product advertisement, highly detailed.`;
+          prompt += ` It is strictly forbidden to alter, modify, or change the product's design, logo, shape, labels, or original colors. The product must remain 100% true to its original design.`;
           if (validated.calidad === 'bajo') {
             prompt += ` Draft quality, simple details, quick capture.`;
           } else if (validated.calidad === 'alto') {
@@ -287,6 +288,7 @@ router.post('/generate', requireAuth, async (req, res) => {
         // OpenAI gpt-image-2 generation
         try {
           let dallePrompt = `A high-end commercial ad banner for ${validated.producto}. Theme: ${validated.estilo}. Studio lighting, professional layout, clean design, highly detailed, centered product focus, commercial photography.`;
+          dallePrompt += ` It is strictly forbidden to alter, modify, or change the product's design, logo, shape, labels, or original colors. The product must remain 100% true to its original design.`;
           if (validated.calidad === 'bajo') {
             dallePrompt += ` Draft quality, simple background.`;
           } else if (validated.calidad === 'alto') {
