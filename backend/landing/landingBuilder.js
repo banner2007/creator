@@ -110,7 +110,7 @@ router.post('/project', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Validation failed', details: err.errors });
     }
     console.error('Project creation error:', err);
-    return res.status(500).json({ error: 'Internal server error creating project.' });
+    return res.status(500).json({ error: err.message || 'Internal server error creating project.' });
   }
 });
 

@@ -132,9 +132,12 @@ export const useStore = create((set, get) => ({
         set(state => ({ projects: [data, ...state.projects] }));
         get().selectProject(data);
         return data;
+      } else {
+        alert(data.error || 'Error al crear el proyecto');
       }
     } catch (err) {
       console.error('Error creating project:', err);
+      alert('Error de red al crear el proyecto');
     }
   },
 
