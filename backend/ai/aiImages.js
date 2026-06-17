@@ -429,4 +429,15 @@ router.post('/upscale', requireAuth, async (req, res) => {
   }
 });
 
+router.get('/debug-key', (req, res) => {
+  const key = process.env.OPENAI_API_KEY || process.env.API;
+  if (!key) return res.json({ keyExists: false });
+  return res.json({
+    keyExists: true,
+    length: key.length,
+    prefix: key.substring(0, 15),
+    suffix: key.substring(key.length - 10)
+  });
+});
+
 export default router;
