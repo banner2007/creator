@@ -431,6 +431,16 @@ router.get('/debug-key', async (req, res) => {
   const key = process.env.OPENAI_API_KEY || process.env.API;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const anonKey = process.env.SUPABASE_ANON_KEY;
+  let serviceRole = '';
+  if (serviceKey) {
+    try {
+      const parts = serviceKey.split('.');
+      if (parts.length === 3) {
+        const payload = Buffer.from(parts[1], 'base64').toString();
+        serviceRole = JSON.parse(payload).role;
+      }
+    } catch (e) {}
+  }
   let bucketsData = null;
   let bucketsError = null;
   try {
@@ -447,6 +457,7 @@ router.get('/debug-key', async (req, res) => {
     suffix: key ? key.substring(key.length - 10) : '',
     serviceKeyExists: !!serviceKey,
     serviceKeyLength: serviceKey ? serviceKey.length : 0,
+    serviceRole: serviceRole,
     anonKeyExists: !!anonKey,
     anonKeyLength: anonKey ? anonKey.length : 0,
     serviceKeyEqualsAnon: serviceKey === anonKey,
