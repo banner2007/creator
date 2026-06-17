@@ -284,6 +284,7 @@ export default function AdGenPage() {
     generatedImages,
     fetchProjectImages,
     createProduct,
+    createProject,
     
     // Firebase templates
     firebaseTemplates,
@@ -328,6 +329,23 @@ export default function AdGenPage() {
   const [newProdDescription, setNewProdDescription] = useState('');
   const [newProdCoverImage, setNewProdCoverImage] = useState('');
   const [isSavingProduct, setIsSavingProduct] = useState(false);
+
+  // Project Creation Modal State (within AdGenPage)
+  const [showProjModal, setShowProjModal] = useState(false);
+  const [newProjName, setNewProjName] = useState('');
+  const [isSavingProject, setIsSavingProject] = useState(false);
+
+  const handleCreateProject = async (e) => {
+    e.preventDefault();
+    if (!newProjName.trim()) return;
+    setIsSavingProject(true);
+    const result = await createProject(newProjName);
+    if (result) {
+      setNewProjName('');
+      setShowProjModal(false);
+    }
+    setIsSavingProject(false);
+  };
 
   // Results State
   const [successImages, setSuccessImages] = useState([]);
@@ -578,7 +596,7 @@ export default function AdGenPage() {
           <div className="flex items-center gap-2 bg-slate-900 border border-white/5 px-4 py-2 rounded-2xl">
             <span className="text-xs text-slate-500 font-semibold">Campaña:</span>
             <select
-              className="bg-transparent text-xs text-slate-300 font-semibold focus:outline-none cursor-pointer"
+              className="bg-transparent text-xs text-slate-300 font-semibold focus:outline-none cursor-pointer max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap"
               value={selectedProject?.id || ''}
               onChange={e => {
                 const proj = projects.find(p => p.id === e.target.value);
@@ -590,6 +608,14 @@ export default function AdGenPage() {
                 <option key={p.id} value={p.id} className="bg-slate-950">{p.name}</option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={() => setShowProjModal(true)}
+              className="p-1 rounded-lg hover:bg-white/5 text-purple-400 hover:text-purple-300 transition-all ml-1"
+              title="Nueva Campaña/Proyecto"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
@@ -732,7 +758,7 @@ export default function AdGenPage() {
           <div className="flex items-center gap-2 bg-slate-900 border border-white/5 px-4 py-2 rounded-2xl">
             <span className="text-xs text-slate-500 font-semibold">Campaña:</span>
             <select
-              className="bg-transparent text-xs text-slate-300 font-semibold focus:outline-none cursor-pointer"
+              className="bg-transparent text-xs text-slate-300 font-semibold focus:outline-none cursor-pointer max-w-[150px] overflow-hidden text-ellipsis whitespace-nowrap"
               value={selectedProject?.id || ''}
               onChange={e => {
                 const proj = projects.find(p => p.id === e.target.value);
@@ -744,6 +770,14 @@ export default function AdGenPage() {
                 <option key={p.id} value={p.id} className="bg-slate-950">{p.name}</option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={() => setShowProjModal(true)}
+              className="p-1 rounded-lg hover:bg-white/5 text-purple-400 hover:text-purple-300 transition-all ml-1"
+              title="Nueva Campaña/Proyecto"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
           </div>
 
           <button
@@ -1177,6 +1211,56 @@ export default function AdGenPage() {
         imageUrl={successImages[0]?.image_url}
         productName={selectedProductForGen?.name}
       />
+
+      {/* Project Creation Modal */}
+      {showProjModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+          <div className="w-full max-w-md bg-slate-950 border border-white/10 p-6 sm:p-8 rounded-3xl relative shadow-2xl">
+            <button 
+              type="button"
+              onClick={() => setShowProjModal(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-xl font-bold mb-2 text-white">Crear Nueva Campaña / Proyecto</h3>
+            <p className="text-xs text-slate-400 mb-6">Asocia y agrupa las imágenes generadas por IA bajo esta campaña.</p>
+            
+            <form onSubmit={handleCreateProject} className="space-y-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-400">Nombre de la campaña</label>
+                <input 
+                  type="text" 
+                  placeholder="Ej: Lanzamiento Invierno o Citratos" 
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-all"
+                  value={newProjName}
+                  onChange={e => setNewProjName(e.target.value)}
+                  required 
+                  autoFocus
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+                <button 
+                  type="button" 
+                  className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-400 hover:bg-white/5 transition-all"
+                  onClick={() => setShowProjModal(false)}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isSavingProject}
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-sm font-semibold text-white transition-all disabled:opacity-50"
+                >
+                  {isSavingProject ? 'Creando...' : 'Crear Proyecto'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
