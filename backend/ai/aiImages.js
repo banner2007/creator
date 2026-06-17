@@ -281,8 +281,9 @@ router.post('/generate', requireAuth, async (req, res) => {
             return res.status(400).json({ error: `Fallo al iniciar tarea de Kie.ai: ${msg || 'Error desconocido'}` });
           }
         } catch (err) {
-          console.error('[AI Gen] Kie.ai integration failed:', err.message);
-          return res.status(500).json({ error: `Error durante la generación con Kie.ai: ${err.message}` });
+          const detail = err.response?.data?.error?.message || err.message;
+          console.error('[AI Gen] Kie.ai integration failed:', detail);
+          return res.status(500).json({ error: `Error durante la generación con Kie.ai: ${detail}` });
         }
       } else {
         // OpenAI gpt-image-2 generation
@@ -299,8 +300,9 @@ router.post('/generate', requireAuth, async (req, res) => {
           finalUrl = await uploadToSupabase(url, validated.projectId);
           modelsUsed.push(model);
         } catch (err) {
-          console.error('[AI Gen] OpenAI generation failed:', err.message);
-          return res.status(500).json({ error: `Error durante la generación con OpenAI: ${err.message}` });
+          const detail = err.response?.data?.error?.message || err.message;
+          console.error('[AI Gen] OpenAI generation failed:', detail);
+          return res.status(500).json({ error: `Error durante la generación con OpenAI: ${detail}` });
         }
       }
       
