@@ -218,6 +218,32 @@ router.get('/test-openai', async (req, res) => {
 });
 
 /**
+ * @route   GET /api/ai/test-poll/:taskId
+ * @desc    Test Kie.ai task polling endpoint (safe, no keys leaked)
+ */
+router.get('/test-poll/:taskId', async (req, res) => {
+  const KIE_API_KEY = process.env.KIE_API_KEY || process.env.ap;
+  if (!KIE_API_KEY) {
+    return res.status(400).json({ error: 'Kie key not configured' });
+  }
+  try {
+    const response = await axios.get(`${KIE_BASE_URL}/api/v1/jobs/recordInfo`, {
+      params: { taskId: req.params.taskId },
+      headers: {
+        'Authorization': `Bearer ${KIE_API_KEY}`
+      }
+    });
+    return res.json({ status: 'success', data: response.data });
+  } catch (err) {
+    return res.status(500).json({
+      status: 'error',
+      message: err.message,
+      response: err.response ? err.response.data : null
+    });
+  }
+});
+
+/**
  * @route   POST /api/ai/generate
  * @desc    Generate commercial product images using Kie.ai or OpenAI DALL-E 3
  */
