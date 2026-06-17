@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './styles/index.css';
 
-// Global fetch interceptor to route relative API and published calls directly to Render
+// Global fetch interceptor to route relative API and published calls directly to Render (Auto deploy v2)
 const originalFetch = window.fetch;
 window.fetch = function (input, init) {
   if (typeof input === 'string') {
