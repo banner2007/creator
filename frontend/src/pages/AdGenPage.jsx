@@ -345,6 +345,12 @@ export default function AdGenPage() {
   }, [selectedProject]);
 
   useEffect(() => {
+    if (projects.length > 0 && !selectedProject) {
+      selectProject(projects[0]);
+    }
+  }, [projects, selectedProject]);
+
+  useEffect(() => {
     if (firebaseTemplates.length > 0 && !selectedTemplate) {
       setSelectedTemplate(firebaseTemplates[0].name);
     }
@@ -721,7 +727,25 @@ export default function AdGenPage() {
         </div>
 
         {/* Buttons right */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Campaign/Project Selector */}
+          <div className="flex items-center gap-2 bg-slate-900 border border-white/5 px-4 py-2 rounded-2xl">
+            <span className="text-xs text-slate-500 font-semibold">Campaña:</span>
+            <select
+              className="bg-transparent text-xs text-slate-300 font-semibold focus:outline-none cursor-pointer"
+              value={selectedProject?.id || ''}
+              onChange={e => {
+                const proj = projects.find(p => p.id === e.target.value);
+                if (proj) selectProject(proj);
+              }}
+            >
+              <option value="" disabled className="bg-slate-950">Selecciona Proyecto...</option>
+              {projects.map(p => (
+                <option key={p.id} value={p.id} className="bg-slate-950">{p.name}</option>
+              ))}
+            </select>
+          </div>
+
           <button
             type="button"
             onClick={handleDownloadGuide}
