@@ -527,7 +527,7 @@ export default function AdGenPage() {
   // Filter history banners for selected product
   const productBanners = selectedProductForGen 
     ? generatedImages.filter(img => 
-        img.prompt.toLowerCase().includes(selectedProductForGen.name.toLowerCase())
+        img.prompt && selectedProductForGen.name && img.prompt.toLowerCase().includes(selectedProductForGen.name.toLowerCase())
       )
     : [];
 
@@ -569,7 +569,7 @@ export default function AdGenPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {products.map(product => {
             const count = generatedImages.filter(img => 
-              img.prompt.toLowerCase().includes(product.name.toLowerCase())
+              img.prompt && product.name && img.prompt.toLowerCase().includes(product.name.toLowerCase())
             ).length;
             
             const countText = count > 0 
