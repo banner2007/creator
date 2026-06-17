@@ -40,5 +40,5 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./frontend/dist/
-          server-dir: public_html/ # Default folder in Hostinger. Change to '/' if the FTP user points directly to creator.shopy.uno
+          server-dir: creator.shopy.uno/
           dangerous-clean-slate: false # Set to true only if you want to delete all files on server before upload
