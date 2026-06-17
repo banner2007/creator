@@ -88,8 +88,7 @@ async function generateOpenAIImage(prompt, ratio) {
       model: 'gpt-image-2',
       prompt: prompt,
       n: 1,
-      size: size,
-      response_format: 'b64_json' // gpt-image-2 prefers base64
+      size: size
     }, {
       headers: {
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
