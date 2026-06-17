@@ -427,44 +427,4 @@ router.post('/upscale', requireAuth, async (req, res) => {
   }
 });
 
-router.get('/debug-key', async (req, res) => {
-  const key = process.env.OPENAI_API_KEY || process.env.API;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anonKey = process.env.SUPABASE_ANON_KEY;
-  let serviceRole = '';
-  if (serviceKey) {
-    try {
-      const parts = serviceKey.split('.');
-      if (parts.length === 3) {
-        const payload = Buffer.from(parts[1], 'base64').toString();
-        serviceRole = JSON.parse(payload).role;
-      }
-    } catch (e) {}
-  }
-  let bucketsData = null;
-  let bucketsError = null;
-  try {
-    const { data, error } = await supabase.storage.listBuckets();
-    bucketsData = data;
-    bucketsError = error;
-  } catch (err) {
-    bucketsError = err.message;
-  }
-  return res.json({
-    keyExists: !!key,
-    length: key ? key.length : 0,
-    prefix: key ? key.substring(0, 15) : '',
-    suffix: key ? key.substring(key.length - 10) : '',
-    serviceKeyExists: !!serviceKey,
-    serviceKeyLength: serviceKey ? serviceKey.length : 0,
-    serviceRole: serviceRole,
-    anonKeyExists: !!anonKey,
-    anonKeyLength: anonKey ? anonKey.length : 0,
-    serviceKeyEqualsAnon: serviceKey === anonKey,
-    buckets: bucketsData,
-    bucketsError: bucketsError,
-    fnSource: generateOpenAIImage.toString()
-  });
-});
-
 export default router;
