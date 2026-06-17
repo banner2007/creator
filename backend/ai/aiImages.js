@@ -69,12 +69,60 @@ async function pollKieTask(taskId, apiKey, retries = 25, delayMs = 3000) {
 }
 
 /**
+ * Analyze product image using gpt-4o-mini to get a visual description
+ */
+async function describeProductImage(imageUrl) {
+  if (!imageUrl) return '';
+  try {
+    console.log(`[Vision] Analyzing product image using gpt-4o-mini: ${imageUrl}`);
+    const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'Describe the main product in this image in detail. Focus on the shape of the bottle/container, its color (e.g. black, white, glass, etc.), the label design, colors on the label, cap color, and logo. Keep it concise (1-2 sentences in English) suitable for a text-to-image prompt.'
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: imageUrl
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 100
+    }, {
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const description = response.data?.choices?.[0]?.message?.content;
+    console.log(`[Vision] Product description: ${description}`);
+    return description ? ` The product container/packaging must be represented exactly as: ${description}` : '';
+  } catch (err) {
+    const errorMsg = err.response?.data?.error?.message || err.message;
+    console.warn('[Vision] Failed to analyze product image:', errorMsg);
+    return '';
+  }
+}
+
+/**
  * Generate image using OpenAI gpt-image-2 (ChatGPT Imagen 2.0)
  */
-async function generateOpenAIImage(prompt, ratio) {
+async function generateOpenAIImage(prompt, ratio, productImage) {
   if (!OPENAI_API_KEY || OPENAI_API_KEY.includes('your-')) {
     throw new Error('OpenAI API Key is missing or invalid in server config.');
   }
+
+  // Describe the product image if provided
+  const productDescription = await describeProductImage(productImage);
+  const finalPrompt = prompt + productDescription;
 
   // Convert ratio to dimensions
   let size = '1024x1024';
@@ -86,7 +134,7 @@ async function generateOpenAIImage(prompt, ratio) {
     console.log(`[OpenAI] Trying to generate with gpt-image-2, size: ${size}...`);
     const response = await axios.post(OPENAI_URL, {
       model: 'gpt-image-2',
-      prompt: prompt,
+      prompt: finalPrompt,
       n: 1,
       size: size
     }, {
@@ -107,7 +155,7 @@ async function generateOpenAIImage(prompt, ratio) {
     // 2. Fallback to dall-e-3
     const response = await axios.post(OPENAI_URL, {
       model: 'dall-e-3',
-      prompt: prompt,
+      prompt: finalPrompt,
       n: 1,
       size: size
     }, {
@@ -296,7 +344,7 @@ router.post('/generate', requireAuth, async (req, res) => {
           } else {
             dallePrompt += ` Medium quality, standard studio lighting.`;
           }
-          const { url, model } = await generateOpenAIImage(dallePrompt, validated.formato);
+          const { url, model } = await generateOpenAIImage(dallePrompt, validated.formato, validated.productImage);
           finalUrl = await uploadToSupabase(url, validated.projectId);
           modelsUsed.push(model);
         } catch (err) {
