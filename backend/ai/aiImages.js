@@ -3,6 +3,7 @@ import { supabaseAdmin as supabase } from '../server.js';
 import { requireAuth } from '../middleware/auth.js';
 import axios from 'axios';
 import { z } from 'zod';
+import FormData from 'form-data';
 
 const router = Router();
 
@@ -11,7 +12,11 @@ const KIE_API_KEY = process.env.KIE_API_KEY || process.env.ap;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || process.env.API;
 
 const KIE_BASE_URL = 'https://api.kie.ai';
-const OPENAI_URL = 'https://api.openai.com/v1/images/generations';
+// IMPORTANTE: usamos el endpoint de EDITS (image-to-image), no GENERATIONS (text-to-image).
+// /v1/images/generations NO acepta imágenes de entrada: el modelo "inventa" un producto
+// nuevo a partir solo del texto del prompt, que es la causa raíz de que el producto cambie.
+// /v1/images/edits sí recibe las imágenes reales como archivos y edita/compone sobre ellas.
+const OPENAI_EDITS_URL = 'https://api.openai.com/v1/images/edits';
 
 // Validation Schema
 const generateSchema = z.object({
@@ -177,58 +182,127 @@ async function describeProductImage(imageUrl) {
 }
 
 /**
- * Generate image using OpenAI gpt-image-2 (ChatGPT Imagen 2.0)
+ * Download an image (URL or base64 data URL) into a Buffer + mime type,
+ * ready to be attached as a file in a multipart/form-data request.
  */
-async function generateOpenAIImage(prompt, ratio) {
+async function fetchImageAsBuffer(imageSource) {
+  if (!imageSource) return null;
+
+  if (imageSource.startsWith('data:')) {
+    const matches = imageSource.match(/^data:([A-Za-z0-9-+\/]+);base64,(.+)$/);
+    if (!matches) throw new Error('Formato de data URL base64 inválido');
+    return { buffer: Buffer.from(matches[2], 'base64'), mimeType: matches[1] };
+  }
+
+  if (imageSource.startsWith('http://') || imageSource.startsWith('https://')) {
+    const response = await axios.get(imageSource, { responseType: 'arraybuffer' });
+    const mimeType = response.headers['content-type'] || 'image/png';
+    return { buffer: Buffer.from(response.data, 'binary'), mimeType };
+  }
+
+  // Raw base64 sin prefijo data:
+  return { buffer: Buffer.from(imageSource, 'base64'), mimeType: 'image/png' };
+}
+
+function mimeToExt(mimeType) {
+  if (!mimeType) return 'png';
+  if (mimeType.includes('jpeg') || mimeType.includes('jpg')) return 'jpg';
+  if (mimeType.includes('webp')) return 'webp';
+  return 'png';
+}
+
+/**
+ * Generate image using OpenAI's image EDITS endpoint (image-to-image).
+ * This is the critical fix: /v1/images/generations only takes text and
+ * cannot see the real product, so it hallucinates a new one. /v1/images/edits
+ * receives the actual product photo(s) as files and edits/composes over them,
+ * which is the only way to truly preserve the real product's identity.
+ *
+ * productImageSources: array of image URLs / data URLs / base64 strings of the REAL product.
+ * referenceImageSource: optional sample ad image, used only as style reference.
+ */
+async function generateOpenAIImage(prompt, ratio, productImageSources = [], referenceImageSource = null) {
   if (!OPENAI_API_KEY || OPENAI_API_KEY.includes('your-')) {
     throw new Error('OpenAI API Key is missing or invalid in server config.');
   }
 
-  // Convert ratio to dimensions
-  let size = '1024x1024';
-  if (ratio === '16:9') size = '1792x1024';
-  else if (ratio === '9:16') size = '1024x1792';
+  if (!productImageSources || productImageSources.length === 0) {
+    throw new Error('Se requiere al menos una imagen real del producto para usar el endpoint de edición. Sin imagen de producto no se puede preservar su identidad.');
+  }
 
-  // 1. Try to generate with gpt-image-2 (ChatGPT Imagen 2.0)
+  // gpt-image-2 / gpt-image-1 solo aceptan estos tamaños fijos
+  let size = '1024x1024';
+  if (ratio === '16:9') size = '1536x1024';
+  else if (ratio === '9:16') size = '1024x1536';
+
+  const buildForm = async (model) => {
+    const form = new FormData();
+    form.append('model', model);
+    form.append('prompt', prompt);
+    form.append('size', size);
+    form.append('n', '1');
+    form.append('quality', 'high');
+
+    // IMPORTANTE: la(s) imagen(es) del producto real van PRIMERO y son las que
+    // el modelo trata como el objeto a preservar. Hasta 16 imágenes soportadas.
+    for (let i = 0; i < productImageSources.length; i++) {
+      const { buffer, mimeType } = await fetchImageAsBuffer(productImageSources[i]);
+      form.append('image[]', buffer, {
+        filename: `product_${i}.${mimeToExt(mimeType)}`,
+        contentType: mimeType
+      });
+    }
+
+    // La imagen de referencia (si existe) se añade SOLO para que el modelo
+    // tenga contexto visual de composición/estilo -- el prompt ya le indica
+    // explícitamente que el producto real (las primeras imágenes) manda.
+    if (referenceImageSource) {
+      const { buffer, mimeType } = await fetchImageAsBuffer(referenceImageSource);
+      form.append('image[]', buffer, {
+        filename: `reference.${mimeToExt(mimeType)}`,
+        contentType: mimeType
+      });
+    }
+
+    return form;
+  };
+
+  // 1. Intentar con gpt-image-2
   try {
-    console.log(`[OpenAI] Trying to generate with gpt-image-2, size: ${size}...`);
-    const response = await axios.post(OPENAI_URL, {
-      model: 'gpt-image-2',
-      prompt: prompt,
-      n: 1,
-      size: size
-    }, {
+    console.log(`[OpenAI] Editando con gpt-image-2 (image-to-image), size: ${size}...`);
+    const form = await buildForm('gpt-image-2');
+    const response = await axios.post(OPENAI_EDITS_URL, form, {
       headers: {
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
+        ...form.getHeaders()
+      },
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity
     });
 
     const urlOrB64 = response.data?.data?.[0]?.b64_json || response.data?.data?.[0]?.url;
-    if (!urlOrB64) throw new Error('No image URL or Base64 returned from gpt-image-2');
-    console.log(`[OpenAI gpt-image-2] Generation succeeded!`);
+    if (!urlOrB64) throw new Error('No image URL or Base64 returned from gpt-image-2 edits');
+    console.log(`[OpenAI gpt-image-2 edits] Generación exitosa!`);
     return { url: urlOrB64, model: 'gpt-image-2' };
   } catch (err) {
     const errorMsg = err.response?.data?.error?.message || err.message;
-    console.warn(`[OpenAI] gpt-image-2 failed: ${errorMsg}. Falling back to dall-e-3...`);
-    
-    // 2. Fallback to dall-e-3
-    const response = await axios.post(OPENAI_URL, {
-      model: 'dall-e-3',
-      prompt: prompt,
-      n: 1,
-      size: size
-    }, {
+    console.warn(`[OpenAI] gpt-image-2 edits falló: ${errorMsg}. Probando con gpt-image-1...`);
+
+    // 2. Fallback a gpt-image-1 (dall-e-3 fue retirado y ya no soporta edits con múltiples imágenes)
+    const form = await buildForm('gpt-image-1');
+    const response = await axios.post(OPENAI_EDITS_URL, form, {
       headers: {
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
+        ...form.getHeaders()
+      },
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity
     });
 
-    const url = response.data?.data?.[0]?.url;
-    if (!url) throw new Error('No image URL returned from dall-e-3 fallback');
-    console.log(`[OpenAI dall-e-3] Fallback generation succeeded!`);
-    return { url, model: 'dall-e-3' };
+    const urlOrB64 = response.data?.data?.[0]?.b64_json || response.data?.data?.[0]?.url;
+    if (!urlOrB64) throw new Error('No image URL or Base64 returned from gpt-image-1 fallback');
+    console.log(`[OpenAI gpt-image-1 edits] Fallback exitoso!`);
+    return { url: urlOrB64, model: 'gpt-image-1' };
   }
 }
 
@@ -339,14 +413,9 @@ router.post('/generate', requireAuth, async (req, res) => {
       }
     }
 
-    // Clean product prompt and retrieve its visual description from image once
+    // Clean product prompt (texto descriptivo del producto dado por el usuario)
     const cleanedProduct = cleanProductPrompt(validated.producto);
-    const productDescription = isKie ? '' : await describeProductImage(validated.productImage);
-
     console.log(`[AI Gen] Cleaned product description for AI engines: "${cleanedProduct}"`);
-    if (productDescription) {
-      console.log(`[AI Gen] Visual product description from image: "${productDescription}"`);
-    }
 
     // Generate images loop
     for (let i = 0; i < validated.cantidad; i++) {
@@ -455,94 +524,40 @@ Reference composition similarity: 90%.
           return res.status(500).json({ error: `Error durante la generación con Kie.ai: ${detail}` });
         }
       } else {
-        // OpenAI gpt-image-2 generation
+        // OpenAI gpt-image-2/1 generation via EDITS endpoint (image-to-image)
         try {
-          let dallePrompt = `Create a premium high-end commercial advertising image for ${cleanedProduct} using the uploaded images.
+          if (!validated.productImage) {
+            return res.status(400).json({ error: 'Se requiere una imagen del producto (productImage) para usar el motor de OpenAI. Sin ella no es posible preservar el producto real.' });
+          }
 
-INPUTS:
+          // El prompt ya NO depende de una descripción textual del producto (esa
+          // descripción es la causa de que el modelo "invente" un producto distinto).
+          // Ahora el modelo VE la imagen real adjunta y solo necesita instrucciones
+          // de composición/estilo.
+          let dallePrompt = `Edit the attached product image(s) into a premium high-end commercial advertising image for ${cleanedProduct}.
 
-1. PRODUCT_IMAGES = one or more uploaded images of the real product (PRIMARY SOURCE OF TRUTH).
-${productDescription ? `The visual appearance of PRODUCT_IMAGES is described as: ${productDescription}.` : ''}
-2. REFERENCE_IMAGE = uploaded sample advertisement image (STYLE AND COMPOSITION REFERENCE ONLY).
+THE FIRST ATTACHED IMAGE(S) show the REAL product. This is the exact, immutable object that must appear in the final result:
+- preserve its exact shape, proportions, colors, labels, logo, packaging, textures, cap/handles/accessories and every visible design detail
+- do NOT redesign, reinterpret, recreate, approximate, replace, stylize, or simplify the product
+- do NOT generate alternate packaging or a different version of the product
+${validated.referenceImage ? `
+The LAST attached image is a sample advertisement, included ONLY as a style/composition reference. Copy from it ONLY: composition, camera framing, lighting, shadows, reflections, color atmosphere, background style and premium advertising feel. Do NOT copy any object, product, packaging, label, logo or color from this reference image.` : ''}
 
-OBJECTIVE:
-Generate a commercial advertising banner that preserves the exact real product from PRODUCT_IMAGES while reproducing the visual language of REFERENCE_IMAGE.
-
-REFERENCE IMAGE INSTRUCTIONS:
-Analyze and transfer ONLY:
-* composition
-* camera framing
-* scene structure
-* lighting style
-* shadows
-* reflections
-* color atmosphere
-* background style
-* typography placement
-* premium advertising feel
-
-DO NOT transfer from REFERENCE_IMAGE:
-* product shape
-* packaging
-* labels
-* logo
-* physical objects
-* textures applied to the product
-* colors of the product
-* dimensions
-* materials
-* decorative product elements
-
-PRODUCT PRESERVATION (HIGHEST PRIORITY):
-Use PRODUCT_IMAGES as the exact object to appear in the final advertisement.
-
-The product shown in PRODUCT_IMAGES is immutable.
-
-Render the exact uploaded product:
-* preserve original geometry
-* preserve exact proportions
-* preserve original colors
-* preserve labels exactly
-* preserve logo exactly
-* preserve packaging exactly
-* preserve surface textures
-* preserve cap, handles, wheels, accessories and physical details
-* preserve all visible design elements
-
-Never:
-* redesign
-* reinterpret
-* recreate
-* approximate
-* replace
-* stylize
-* simplify
-* generate alternate packaging
-* generate a different version
-
-If multiple PRODUCT_IMAGES are provided:
-combine all views to reconstruct the same real product accurately.
-
-COMPOSITION RULE:
-Place the exact preserved product into a scene that follows the composition and visual direction of REFERENCE_IMAGE.
-
-If any conflict exists between REFERENCE_IMAGE and PRODUCT_IMAGES:
-ALWAYS preserve PRODUCT_IMAGES.
+TASK: Place the real product (first image) into a new commercial advertising scene${validated.referenceImage ? ', following the visual style of the reference image' : ''}.
 
 FINAL OUTPUT:
-Professional advertising banner.
-Theme: ${validated.estilo}
-Photorealistic.
-Commercial studio quality.
-Luxury presentation.
-High-end advertising aesthetics.
-Ultra detailed.
-8k quality.
-Masterfully lit.
-Extremely sharp focus.
-Product identity similarity target: 98–100%.`;
+Professional advertising banner. Theme: ${validated.estilo}. Photorealistic, commercial studio quality, luxury presentation, ultra detailed, 8k quality, masterfully lit, extremely sharp focus. Product identity must match the attached real product at 98-100%.`;
 
-          const { url, model } = await generateOpenAIImage(dallePrompt, validated.formato);
+          const productImages = Array.isArray(validated.productImage)
+            ? validated.productImage
+            : [validated.productImage];
+
+          const { url, model } = await generateOpenAIImage(
+            dallePrompt,
+            validated.formato,
+            productImages,
+            validated.referenceImage || null
+          );
           finalUrl = await uploadToSupabase(url, validated.projectId);
           modelsUsed.push(model);
         } catch (err) {

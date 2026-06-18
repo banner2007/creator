@@ -471,6 +471,11 @@ export default function AdGenPage() {
     const placeholderUrl = 'images.unsplash.com/photo-1523275335684-37898b6baf30';
     const primaryProductImage = productImages.find(img => img && img.trim() !== '' && !img.includes(placeholderUrl)) || '';
 
+    if (engine === 'openai' && !primaryProductImage) {
+      alert('Debes subir al menos una imagen del producto para usar el motor OpenAI.');
+      return;
+    }
+
     const results = await generateImages(
       promptText,
       selectedTemplate || 'custom',
