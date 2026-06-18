@@ -341,7 +341,7 @@ router.post('/generate', requireAuth, async (req, res) => {
 
     // Clean product prompt and retrieve its visual description from image once
     const cleanedProduct = cleanProductPrompt(validated.producto);
-    const productDescription = '';
+    const productDescription = isKie ? '' : await describeProductImage(validated.productImage);
 
     console.log(`[AI Gen] Cleaned product description for AI engines: "${cleanedProduct}"`);
     if (productDescription) {
@@ -361,10 +361,12 @@ Create a premium commercial advertising image.
 IMAGE 1:
 REAL PRODUCT.
 This image contains the exact product that must appear in the final output.
+${validated.productImage ? `URL: ${validated.productImage}` : ''}
 
 IMAGE 2:
 REFERENCE AD.
 Use only as composition and visual direction.
+${validated.referenceImage ? `URL: ${validated.referenceImage}` : ''}
 
 TASK:
 Create an advertisement using IMAGE 2 as inspiration while preserving IMAGE 1 exactly.
@@ -427,14 +429,9 @@ Reference composition similarity: 90%.
             aspectRatio: validated.formato,
             enableTranslation: true
           };
-          payload.inputImage = [
-            validated.productImage,
-            validated.referenceImage
-          ].filter(Boolean);
-
-          payload.controlMode = "composition+identity";
-          payload.imageWeight = 0.95;
-          payload.referenceWeight = 0.05;
+          if (validated.productImage) {
+            payload.inputImage = validated.productImage;
+          }
 
           const response = await axios.post(`${KIE_BASE_URL}/api/v1/flux/kontext/generate`, payload, {
             headers: {
