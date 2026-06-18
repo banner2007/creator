@@ -69,6 +69,70 @@ async function pollKieTask(taskId, apiKey, retries = 25, delayMs = 3000) {
 }
 
 /**
+ * Clean product prompt by removing large non-visual description texts
+ */
+function cleanProductPrompt(rawPrompt) {
+  if (!rawPrompt) return '';
+  
+  if (!rawPrompt.toLowerCase().includes('product:')) {
+    return rawPrompt.trim();
+  }
+
+  const keys = [
+    { name: 'product', patterns: [/product:/i] },
+    { name: 'bgColor', patterns: [/background color:/i] },
+    { name: 'styleContext', patterns: [/style context:/i, /referencing selected/i] },
+    { name: 'extraStyle', patterns: [/additional style directions:/i, /style customization:/i] },
+    { name: 'description', patterns: [/description:/i] }
+  ];
+
+  const matches = [];
+  
+  keys.forEach(k => {
+    k.patterns.forEach(pattern => {
+      const regex = new RegExp(pattern, 'gi');
+      let match;
+      while ((match = regex.exec(rawPrompt)) !== null) {
+        matches.push({
+          name: k.name,
+          index: match.index,
+          length: match[0].length
+        });
+      }
+    });
+  });
+
+  matches.sort((a, b) => a.index - b.index);
+
+  const values = {};
+  for (let i = 0; i < matches.length; i++) {
+    const current = matches[i];
+    const nextIndex = (i + 1 < matches.length) ? matches[i + 1].index : rawPrompt.length;
+    const value = rawPrompt.substring(current.index + current.length, nextIndex).trim();
+    
+    let cleanVal = value.replace(/^[:\s\.-]+|[:\s\.-]+$/g, '').trim();
+    if (cleanVal) {
+      if (rawPrompt.substring(current.index, current.index + current.length).toLowerCase().includes('referencing selected')) {
+        cleanVal = rawPrompt.substring(current.index, nextIndex).trim().replace(/[:\s\.-]+$/g, '').trim();
+      }
+      values[current.name] = cleanVal;
+    }
+  }
+
+  let cleanedParts = [];
+  if (values.product) cleanedParts.push(values.product);
+  if (values.bgColor) cleanedParts.push(`Background color: ${values.bgColor}`);
+  if (values.styleContext) cleanedParts.push(values.styleContext);
+  if (values.extraStyle) cleanedParts.push(`Style directions: ${values.extraStyle}`);
+  
+  if (cleanedParts.length === 0) {
+    return rawPrompt.trim();
+  }
+
+  return cleanedParts.join('. ') + '.';
+}
+
+/**
  * Analyze product image using gpt-4o-mini to get a visual description
  */
 async function describeProductImage(imageUrl) {
@@ -104,7 +168,7 @@ async function describeProductImage(imageUrl) {
 
     const description = response.data?.choices?.[0]?.message?.content;
     console.log(`[Vision] Product description: ${description}`);
-    return description ? ` The product container/packaging must be represented exactly as: ${description}` : '';
+    return description ? description.trim() : '';
   } catch (err) {
     const errorMsg = err.response?.data?.error?.message || err.message;
     console.warn('[Vision] Failed to analyze product image:', errorMsg);
@@ -115,14 +179,10 @@ async function describeProductImage(imageUrl) {
 /**
  * Generate image using OpenAI gpt-image-2 (ChatGPT Imagen 2.0)
  */
-async function generateOpenAIImage(prompt, ratio, productImage) {
+async function generateOpenAIImage(prompt, ratio) {
   if (!OPENAI_API_KEY || OPENAI_API_KEY.includes('your-')) {
     throw new Error('OpenAI API Key is missing or invalid in server config.');
   }
-
-  // Describe the product image if provided
-  const productDescription = await describeProductImage(productImage);
-  const finalPrompt = prompt + productDescription;
 
   // Convert ratio to dimensions
   let size = '1024x1024';
@@ -134,7 +194,7 @@ async function generateOpenAIImage(prompt, ratio, productImage) {
     console.log(`[OpenAI] Trying to generate with gpt-image-2, size: ${size}...`);
     const response = await axios.post(OPENAI_URL, {
       model: 'gpt-image-2',
-      prompt: finalPrompt,
+      prompt: prompt,
       n: 1,
       size: size
     }, {
@@ -155,7 +215,7 @@ async function generateOpenAIImage(prompt, ratio, productImage) {
     // 2. Fallback to dall-e-3
     const response = await axios.post(OPENAI_URL, {
       model: 'dall-e-3',
-      prompt: finalPrompt,
+      prompt: prompt,
       n: 1,
       size: size
     }, {
@@ -279,6 +339,15 @@ router.post('/generate', requireAuth, async (req, res) => {
       }
     }
 
+    // Clean product prompt and retrieve its visual description from image once
+    const cleanedProduct = cleanProductPrompt(validated.producto);
+    const productDescription = await describeProductImage(validated.productImage);
+
+    console.log(`[AI Gen] Cleaned product description for AI engines: "${cleanedProduct}"`);
+    if (productDescription) {
+      console.log(`[AI Gen] Visual product description from image: "${productDescription}"`);
+    }
+
     // Generate images loop
     for (let i = 0; i < validated.cantidad; i++) {
       let finalUrl = '';
@@ -286,8 +355,11 @@ router.post('/generate', requireAuth, async (req, res) => {
       if (isKie) {
         try {
           // Build rich prompt for Kie.ai Flux Kontext style transfer
-          let prompt = `A premium professional commercial product photo of ${validated.producto}, styled in a ${validated.estilo} theme, studio lighting, photorealistic, product advertisement, highly detailed.`;
+          let prompt = `A premium professional commercial product photo of ${cleanedProduct}, styled in a ${validated.estilo} theme, studio lighting, photorealistic, product advertisement, highly detailed.`;
           prompt += ` It is strictly forbidden to alter, modify, or change the product's design, logo, shape, labels, or original colors. The product must remain 100% true to its original design.`;
+          if (productDescription) {
+            prompt += ` The product container/packaging must look exactly like: ${productDescription}.`;
+          }
           if (validated.calidad === 'bajo') {
             prompt += ` Draft quality, simple details, quick capture.`;
           } else if (validated.calidad === 'alto') {
@@ -335,8 +407,11 @@ router.post('/generate', requireAuth, async (req, res) => {
       } else {
         // OpenAI gpt-image-2 generation
         try {
-          let dallePrompt = `A high-end commercial ad banner for ${validated.producto}. Theme: ${validated.estilo}. Studio lighting, professional layout, clean design, highly detailed, centered product focus, commercial photography.`;
+          let dallePrompt = `A high-end commercial ad banner for ${cleanedProduct}. Theme: ${validated.estilo}. Studio lighting, professional layout, clean design, highly detailed, centered product focus, commercial photography.`;
           dallePrompt += ` It is strictly forbidden to alter, modify, or change the product's design, logo, shape, labels, or original colors. The product must remain 100% true to its original design.`;
+          if (productDescription) {
+            dallePrompt += ` CRITICAL REQUIREMENT: The product container/packaging must look exactly like: ${productDescription}. Do not change the colors or cap design.`;
+          }
           if (validated.calidad === 'bajo') {
             dallePrompt += ` Draft quality, simple background.`;
           } else if (validated.calidad === 'alto') {
@@ -344,7 +419,7 @@ router.post('/generate', requireAuth, async (req, res) => {
           } else {
             dallePrompt += ` Medium quality, standard studio lighting.`;
           }
-          const { url, model } = await generateOpenAIImage(dallePrompt, validated.formato, validated.productImage);
+          const { url, model } = await generateOpenAIImage(dallePrompt, validated.formato);
           finalUrl = await uploadToSupabase(url, validated.projectId);
           modelsUsed.push(model);
         } catch (err) {

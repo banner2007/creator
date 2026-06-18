@@ -166,6 +166,9 @@ export default function LandingGenPage() {
       promptText += ` Style customization: ${customStyle}`;
     }
 
+    const placeholderUrl = 'images.unsplash.com/photo-1523275335684-37898b6baf30';
+    const prodCover = prod?.cover_image && !prod.cover_image.includes(placeholderUrl) ? prod.cover_image : '';
+
     const results = await generateImages(
       promptText,
       selectedTemplate || 'custom',
@@ -173,7 +176,8 @@ export default function LandingGenPage() {
       1,
       selectedProject.id,
       engine,
-      refImageUrl
+      refImageUrl,
+      prodCover
     );
 
     if (results && results.length > 0) {

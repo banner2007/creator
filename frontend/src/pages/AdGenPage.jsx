@@ -466,6 +466,11 @@ export default function AdGenPage() {
       promptText += ` Additional style directions: ${customStyle}`;
     }
 
+    // Find the first valid product image URL (uploaded or cover image)
+    // Avoid using the default Unsplash placeholder if there is an uploaded image in other slots
+    const placeholderUrl = 'images.unsplash.com/photo-1523275335684-37898b6baf30';
+    const primaryProductImage = productImages.find(img => img && img.trim() !== '' && !img.includes(placeholderUrl)) || '';
+
     const results = await generateImages(
       promptText,
       selectedTemplate || 'custom',
@@ -474,7 +479,7 @@ export default function AdGenPage() {
       selectedProject.id,
       engine,
       refImageUrl,
-      productImages[0], // Pass primary product image URL
+      primaryProductImage,
       calidad
     );
 
