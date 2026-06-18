@@ -341,7 +341,7 @@ router.post('/generate', requireAuth, async (req, res) => {
 
     // Clean product prompt and retrieve its visual description from image once
     const cleanedProduct = cleanProductPrompt(validated.producto);
-    const productDescription = await describeProductImage(validated.productImage);
+    const productDescription = '';
 
     console.log(`[AI Gen] Cleaned product description for AI engines: "${cleanedProduct}"`);
     if (productDescription) {
@@ -355,94 +355,70 @@ router.post('/generate', requireAuth, async (req, res) => {
       if (isKie) {
         try {
           // Build rich prompt based on user instructions
-          let prompt = `Create a premium high-end commercial advertising image for ${cleanedProduct} using the uploaded images.
+          let prompt = `
+Create a premium commercial advertising image.
 
-INPUTS:
+IMAGE 1:
+REAL PRODUCT.
+This image contains the exact product that must appear in the final output.
 
-1. PRODUCT_IMAGES = one or more uploaded images of the real product (PRIMARY SOURCE OF TRUTH).
-${productDescription ? `The visual appearance of PRODUCT_IMAGES is described as: ${productDescription}.` : ''}
-2. REFERENCE_IMAGE = uploaded sample advertisement image (STYLE AND COMPOSITION REFERENCE ONLY).
+IMAGE 2:
+REFERENCE AD.
+Use only as composition and visual direction.
 
-OBJECTIVE:
-Generate a commercial advertising banner that preserves the exact real product from PRODUCT_IMAGES while reproducing the visual language of REFERENCE_IMAGE.
+TASK:
+Create an advertisement using IMAGE 2 as inspiration while preserving IMAGE 1 exactly.
 
-REFERENCE IMAGE INSTRUCTIONS:
-Analyze and transfer ONLY:
-* composition
-* camera framing
-* scene structure
-* lighting style
-* shadows
-* reflections
-* color atmosphere
-* background style
-* typography placement
-* premium advertising feel
+STRICT PRODUCT LOCK:
 
-DO NOT transfer from REFERENCE_IMAGE:
-* product shape
-* packaging
-* labels
-* logo
-* physical objects
-* textures applied to the product
-* colors of the product
-* dimensions
-* materials
-* decorative product elements
-
-PRODUCT PRESERVATION (HIGHEST PRIORITY):
-Use PRODUCT_IMAGES as the exact object to appear in the final advertisement.
-
-The product shown in PRODUCT_IMAGES is immutable.
-
-Render the exact uploaded product:
-* preserve original geometry
-* preserve exact proportions
-* preserve original colors
-* preserve labels exactly
-* preserve logo exactly
-* preserve packaging exactly
-* preserve surface textures
-* preserve cap, handles, wheels, accessories and physical details
-* preserve all visible design elements
+Use IMAGE 1 as the final object.
 
 Never:
-* redesign
-* reinterpret
-* recreate
-* approximate
-* replace
-* stylize
-* simplify
-* generate alternate packaging
-* generate a different version
+- redraw product
+- recreate product
+- approximate product
+- modify labels
+- modify logo
+- modify colors
+- modify packaging
+- modify dimensions
+- modify geometry
+- invent missing parts
+- stylize product
+- smooth product
+- generate alternate versions
 
-If multiple PRODUCT_IMAGES are provided:
-combine all views to reconstruct the same real product accurately.
+Transfer ONLY from IMAGE 2:
+- composition
+- framing
+- camera angle
+- lighting
+- reflections
+- atmosphere
+- background
+- premium advertising style
 
-COMPOSITION RULE:
-Place the exact preserved product into a scene that follows the composition and visual direction of REFERENCE_IMAGE.
+Never transfer:
+- product shape
+- package
+- objects
+- logo
+- colors
+- materials
 
-If any conflict exists between REFERENCE_IMAGE and PRODUCT_IMAGES:
-ALWAYS preserve PRODUCT_IMAGES.
+If conflict exists:
+IMAGE 1 wins.
 
-FINAL OUTPUT:
-Professional advertising banner.
-Theme: ${validated.estilo}
+OUTPUT:
 Photorealistic.
-Commercial studio quality.
-Luxury presentation.
-High-end advertising aesthetics.
-Ultra detailed.
-8k quality.
-Masterfully lit.
-Extremely sharp focus.
-Product identity similarity target: 98–100%.`;
-
-          if (validated.referenceImage) {
-            prompt += `\n\nReference Image URL: ${validated.referenceImage}`;
-          }
+Commercial photography.
+Studio quality.
+Theme: ${validated.estilo}
+Extremely detailed.
+Ultra realistic.
+Product identity preservation: 100%.
+Reference composition similarity: 90%.
+`;
 
           console.log(`[Kie.ai] Submitting job with prompt: ${prompt}`);
           const payload = {
@@ -451,9 +427,14 @@ Product identity similarity target: 98–100%.`;
             aspectRatio: validated.formato,
             enableTranslation: true
           };
-          if (validated.productImage) {
-            payload.inputImage = validated.productImage;
-          }
+          payload.inputImage = [
+            validated.productImage,
+            validated.referenceImage
+          ].filter(Boolean);
+
+          payload.controlMode = "composition+identity";
+          payload.imageWeight = 0.95;
+          payload.referenceWeight = 0.05;
 
           const response = await axios.post(`${KIE_BASE_URL}/api/v1/flux/kontext/generate`, payload, {
             headers: {
