@@ -355,74 +355,90 @@ router.post('/generate', requireAuth, async (req, res) => {
       if (isKie) {
         try {
           // Build rich prompt based on user instructions
-          let prompt = `Create a premium high-end commercial advertising image for ${cleanedProduct}.
+          let prompt = `Create a premium high-end commercial advertising image for ${cleanedProduct} using the uploaded images.
 
-PRIMARY SOURCE OF TRUTH:
-The uploaded PRODUCT_IMAGES are the exact product to render and must be treated as immutable visual input.
+INPUTS:
+
+1. PRODUCT_IMAGES = one or more uploaded images of the real product (PRIMARY SOURCE OF TRUTH).
 ${productDescription ? `The visual appearance of PRODUCT_IMAGES is described as: ${productDescription}.` : ''}
+2. REFERENCE_IMAGE = uploaded sample advertisement image (STYLE AND COMPOSITION REFERENCE ONLY).
 
-SECONDARY REFERENCE:
-Use the uploaded REFERENCE_IMAGE only as inspiration for:
+OBJECTIVE:
+Generate a commercial advertising banner that preserves the exact real product from PRODUCT_IMAGES while reproducing the visual language of REFERENCE_IMAGE.
+
+REFERENCE IMAGE INSTRUCTIONS:
+Analyze and transfer ONLY:
 * composition
-* framing
-* lighting
-* mood
-* background styling
-* text placement
+* camera framing
+* scene structure
+* lighting style
+* shadows
+* reflections
+* color atmosphere
+* background style
+* typography placement
+* premium advertising feel
 
-Do NOT copy, recreate, reinterpret, or transfer any product, packaging, object, logo, proportions, or physical elements from the reference image.
+DO NOT transfer from REFERENCE_IMAGE:
+* product shape
+* packaging
+* labels
+* logo
+* physical objects
+* textures applied to the product
+* colors of the product
+* dimensions
+* materials
+* decorative product elements
 
-STRICT PRODUCT PRESERVATION RULES (MANDATORY):
-Render the exact uploaded product.
-Do not recreate it.
-Do not approximate it.
+PRODUCT PRESERVATION (HIGHEST PRIORITY):
+Use PRODUCT_IMAGES as the exact object to appear in the final advertisement.
 
-It is strictly forbidden to:
-* alter the product design
-* modify geometry
-* change proportions
-* redesign packaging
-* change labels
-* modify logo
-* alter colors
-* replace materials
-* invent details
-* smooth textures
-* generate alternative versions
-* add accessories
-* change cap design
-* change shape
-* stylize the product itself
+The product shown in PRODUCT_IMAGES is immutable.
 
-The product identity must remain visually identical to the uploaded PRODUCT_IMAGES.
+Render the exact uploaded product:
+* preserve original geometry
+* preserve exact proportions
+* preserve original colors
+* preserve labels exactly
+* preserve logo exactly
+* preserve packaging exactly
+* preserve surface textures
+* preserve cap, handles, wheels, accessories and physical details
+* preserve all visible design elements
 
-ALLOWED MODIFICATIONS:
-* adjust camera angle
-* reposition product
-* scale proportionally
-* add realistic reflections
-* add realistic shadows
-* improve lighting
-* place product into an advertising environment
+Never:
+* redesign
+* reinterpret
+* recreate
+* approximate
+* replace
+* stylize
+* simplify
+* generate alternate packaging
+* generate a different version
 
-PRODUCT VALIDATION:
-Maintain at least 98% visual similarity to PRODUCT_IMAGES.
-If preserving the product conflicts with style or composition, ALWAYS preserve the product.
+If multiple PRODUCT_IMAGES are provided:
+combine all views to reconstruct the same real product accurately.
 
-OUTPUT REQUIREMENTS:
+COMPOSITION RULE:
+Place the exact preserved product into a scene that follows the composition and visual direction of REFERENCE_IMAGE.
+
+If any conflict exists between REFERENCE_IMAGE and PRODUCT_IMAGES:
+ALWAYS preserve PRODUCT_IMAGES.
+
+FINAL OUTPUT:
+Professional advertising banner.
 Theme: ${validated.estilo}
-Commercial advertising banner.
-Studio lighting.
-Professional composition.
-Centered product focus.
 Photorealistic.
-Commercial photography.
-Ultra high quality.
-8k detail.
-Award-winning advertisement look.
+Commercial studio quality.
+Luxury presentation.
+High-end advertising aesthetics.
+Ultra detailed.
+8k quality.
 Masterfully lit.
 Extremely sharp focus.
-Luxury visual finish.`;
+Product identity similarity target: 98–100%.`;
 
           if (validated.referenceImage) {
             prompt += `\n\nReference Image URL: ${validated.referenceImage}`;
@@ -463,74 +479,90 @@ Luxury visual finish.`;
       } else {
         // OpenAI gpt-image-2 generation
         try {
-          let dallePrompt = `Create a premium high-end commercial advertising image for ${cleanedProduct}.
+          let dallePrompt = `Create a premium high-end commercial advertising image for ${cleanedProduct} using the uploaded images.
 
-PRIMARY SOURCE OF TRUTH:
-The uploaded PRODUCT_IMAGES are the exact product to render and must be treated as immutable visual input.
+INPUTS:
+
+1. PRODUCT_IMAGES = one or more uploaded images of the real product (PRIMARY SOURCE OF TRUTH).
 ${productDescription ? `The visual appearance of PRODUCT_IMAGES is described as: ${productDescription}.` : ''}
+2. REFERENCE_IMAGE = uploaded sample advertisement image (STYLE AND COMPOSITION REFERENCE ONLY).
 
-SECONDARY REFERENCE:
-Use the uploaded REFERENCE_IMAGE only as inspiration for:
+OBJECTIVE:
+Generate a commercial advertising banner that preserves the exact real product from PRODUCT_IMAGES while reproducing the visual language of REFERENCE_IMAGE.
+
+REFERENCE IMAGE INSTRUCTIONS:
+Analyze and transfer ONLY:
 * composition
-* framing
-* lighting
-* mood
-* background styling
-* text placement
+* camera framing
+* scene structure
+* lighting style
+* shadows
+* reflections
+* color atmosphere
+* background style
+* typography placement
+* premium advertising feel
 
-Do NOT copy, recreate, reinterpret, or transfer any product, packaging, object, logo, proportions, or physical elements from the reference image.
+DO NOT transfer from REFERENCE_IMAGE:
+* product shape
+* packaging
+* labels
+* logo
+* physical objects
+* textures applied to the product
+* colors of the product
+* dimensions
+* materials
+* decorative product elements
 
-STRICT PRODUCT PRESERVATION RULES (MANDATORY):
-Render the exact uploaded product.
-Do not recreate it.
-Do not approximate it.
+PRODUCT PRESERVATION (HIGHEST PRIORITY):
+Use PRODUCT_IMAGES as the exact object to appear in the final advertisement.
 
-It is strictly forbidden to:
-* alter the product design
-* modify geometry
-* change proportions
-* redesign packaging
-* change labels
-* modify logo
-* alter colors
-* replace materials
-* invent details
-* smooth textures
-* generate alternative versions
-* add accessories
-* change cap design
-* change shape
-* stylize the product itself
+The product shown in PRODUCT_IMAGES is immutable.
 
-The product identity must remain visually identical to the uploaded PRODUCT_IMAGES.
+Render the exact uploaded product:
+* preserve original geometry
+* preserve exact proportions
+* preserve original colors
+* preserve labels exactly
+* preserve logo exactly
+* preserve packaging exactly
+* preserve surface textures
+* preserve cap, handles, wheels, accessories and physical details
+* preserve all visible design elements
 
-ALLOWED MODIFICATIONS:
-* adjust camera angle
-* reposition product
-* scale proportionally
-* add realistic reflections
-* add realistic shadows
-* improve lighting
-* place product into an advertising environment
+Never:
+* redesign
+* reinterpret
+* recreate
+* approximate
+* replace
+* stylize
+* simplify
+* generate alternate packaging
+* generate a different version
 
-PRODUCT VALIDATION:
-Maintain at least 98% visual similarity to PRODUCT_IMAGES.
-If preserving the product conflicts with style or composition, ALWAYS preserve the product.
+If multiple PRODUCT_IMAGES are provided:
+combine all views to reconstruct the same real product accurately.
 
-OUTPUT REQUIREMENTS:
+COMPOSITION RULE:
+Place the exact preserved product into a scene that follows the composition and visual direction of REFERENCE_IMAGE.
+
+If any conflict exists between REFERENCE_IMAGE and PRODUCT_IMAGES:
+ALWAYS preserve PRODUCT_IMAGES.
+
+FINAL OUTPUT:
+Professional advertising banner.
 Theme: ${validated.estilo}
-Commercial advertising banner.
-Studio lighting.
-Professional composition.
-Centered product focus.
 Photorealistic.
-Commercial photography.
-Ultra high quality.
-8k detail.
-Award-winning advertisement look.
+Commercial studio quality.
+Luxury presentation.
+High-end advertising aesthetics.
+Ultra detailed.
+8k quality.
 Masterfully lit.
 Extremely sharp focus.
-Luxury visual finish.`;
+Product identity similarity target: 98–100%.`;
 
           const { url, model } = await generateOpenAIImage(dallePrompt, validated.formato);
           finalUrl = await uploadToSupabase(url, validated.projectId);
