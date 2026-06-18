@@ -354,22 +354,78 @@ router.post('/generate', requireAuth, async (req, res) => {
       
       if (isKie) {
         try {
-          // Build rich prompt for Kie.ai Flux Kontext style transfer
-          let prompt = `A premium professional commercial product photo of ${cleanedProduct}, styled in a ${validated.estilo} theme, studio lighting, photorealistic, product advertisement, highly detailed.`;
-          prompt += ` It is strictly forbidden to alter, modify, or change the product's design, logo, shape, labels, or original colors. The product must remain 100% true to its original design.`;
-          if (productDescription) {
-            prompt += ` The product container/packaging must look exactly like: ${productDescription}.`;
-          }
-          if (validated.calidad === 'bajo') {
-            prompt += ` Draft quality, simple details, quick capture.`;
-          } else if (validated.calidad === 'alto') {
-            prompt += ` Ultra high quality, professional commercial photography, 8k resolution, masterfully lit, award-winning advertisement look, photorealistic, sharp focus.`;
-          } else {
-            prompt += ` Medium quality, standard studio commercial lighting.`;
-          }
+          // Build rich prompt based on user instructions
+          let prompt = `Create a premium high-end commercial advertising image for ${cleanedProduct}.
+
+PRIMARY SOURCE OF TRUTH:
+The uploaded PRODUCT_IMAGES are the exact product to render and must be treated as immutable visual input.
+${productDescription ? `The visual appearance of PRODUCT_IMAGES is described as: ${productDescription}.` : ''}
+
+SECONDARY REFERENCE:
+Use the uploaded REFERENCE_IMAGE only as inspiration for:
+* composition
+* framing
+* lighting
+* mood
+* background styling
+* text placement
+
+Do NOT copy, recreate, reinterpret, or transfer any product, packaging, object, logo, proportions, or physical elements from the reference image.
+
+STRICT PRODUCT PRESERVATION RULES (MANDATORY):
+Render the exact uploaded product.
+Do not recreate it.
+Do not approximate it.
+
+It is strictly forbidden to:
+* alter the product design
+* modify geometry
+* change proportions
+* redesign packaging
+* change labels
+* modify logo
+* alter colors
+* replace materials
+* invent details
+* smooth textures
+* generate alternative versions
+* add accessories
+* change cap design
+* change shape
+* stylize the product itself
+
+The product identity must remain visually identical to the uploaded PRODUCT_IMAGES.
+
+ALLOWED MODIFICATIONS:
+* adjust camera angle
+* reposition product
+* scale proportionally
+* add realistic reflections
+* add realistic shadows
+* improve lighting
+* place product into an advertising environment
+
+PRODUCT VALIDATION:
+Maintain at least 98% visual similarity to PRODUCT_IMAGES.
+If preserving the product conflicts with style or composition, ALWAYS preserve the product.
+
+OUTPUT REQUIREMENTS:
+Theme: ${validated.estilo}
+Commercial advertising banner.
+Studio lighting.
+Professional composition.
+Centered product focus.
+Photorealistic.
+Commercial photography.
+Ultra high quality.
+8k detail.
+Award-winning advertisement look.
+Masterfully lit.
+Extremely sharp focus.
+Luxury visual finish.`;
 
           if (validated.referenceImage) {
-            prompt += ` Match composition, background colors and style of the reference image: ${validated.referenceImage}.`;
+            prompt += `\n\nReference Image URL: ${validated.referenceImage}`;
           }
 
           console.log(`[Kie.ai] Submitting job with prompt: ${prompt}`);
@@ -407,18 +463,75 @@ router.post('/generate', requireAuth, async (req, res) => {
       } else {
         // OpenAI gpt-image-2 generation
         try {
-          let dallePrompt = `A high-end commercial ad banner for ${cleanedProduct}. Theme: ${validated.estilo}. Studio lighting, professional layout, clean design, highly detailed, centered product focus, commercial photography.`;
-          dallePrompt += ` It is strictly forbidden to alter, modify, or change the product's design, logo, shape, labels, or original colors. The product must remain 100% true to its original design.`;
-          if (productDescription) {
-            dallePrompt += ` CRITICAL REQUIREMENT: The product container/packaging must look exactly like: ${productDescription}. Do not change the colors or cap design.`;
-          }
-          if (validated.calidad === 'bajo') {
-            dallePrompt += ` Draft quality, simple background.`;
-          } else if (validated.calidad === 'alto') {
-            dallePrompt += ` Ultra high quality, professional studio setup, 8k resolution, award-winning commercial layout, masterfully lit, photorealistic, extremely sharp focus.`;
-          } else {
-            dallePrompt += ` Medium quality, standard studio lighting.`;
-          }
+          let dallePrompt = `Create a premium high-end commercial advertising image for ${cleanedProduct}.
+
+PRIMARY SOURCE OF TRUTH:
+The uploaded PRODUCT_IMAGES are the exact product to render and must be treated as immutable visual input.
+${productDescription ? `The visual appearance of PRODUCT_IMAGES is described as: ${productDescription}.` : ''}
+
+SECONDARY REFERENCE:
+Use the uploaded REFERENCE_IMAGE only as inspiration for:
+* composition
+* framing
+* lighting
+* mood
+* background styling
+* text placement
+
+Do NOT copy, recreate, reinterpret, or transfer any product, packaging, object, logo, proportions, or physical elements from the reference image.
+
+STRICT PRODUCT PRESERVATION RULES (MANDATORY):
+Render the exact uploaded product.
+Do not recreate it.
+Do not approximate it.
+
+It is strictly forbidden to:
+* alter the product design
+* modify geometry
+* change proportions
+* redesign packaging
+* change labels
+* modify logo
+* alter colors
+* replace materials
+* invent details
+* smooth textures
+* generate alternative versions
+* add accessories
+* change cap design
+* change shape
+* stylize the product itself
+
+The product identity must remain visually identical to the uploaded PRODUCT_IMAGES.
+
+ALLOWED MODIFICATIONS:
+* adjust camera angle
+* reposition product
+* scale proportionally
+* add realistic reflections
+* add realistic shadows
+* improve lighting
+* place product into an advertising environment
+
+PRODUCT VALIDATION:
+Maintain at least 98% visual similarity to PRODUCT_IMAGES.
+If preserving the product conflicts with style or composition, ALWAYS preserve the product.
+
+OUTPUT REQUIREMENTS:
+Theme: ${validated.estilo}
+Commercial advertising banner.
+Studio lighting.
+Professional composition.
+Centered product focus.
+Photorealistic.
+Commercial photography.
+Ultra high quality.
+8k detail.
+Award-winning advertisement look.
+Masterfully lit.
+Extremely sharp focus.
+Luxury visual finish.`;
+
           const { url, model } = await generateOpenAIImage(dallePrompt, validated.formato);
           finalUrl = await uploadToSupabase(url, validated.projectId);
           modelsUsed.push(model);
