@@ -530,27 +530,64 @@ Reference composition similarity: 90%.
             return res.status(400).json({ error: 'Se requiere una imagen del producto (productImage) para usar el motor de OpenAI. Sin ella no es posible preservar el producto real.' });
           }
 
-          // El prompt ya NO depende de una descripción textual del producto (esa
-          // descripción es la causa de que el modelo "invente" un producto distinto).
-          // Ahora el modelo VE la imagen real adjunta y solo necesita instrucciones
-          // de composición/estilo.
-          let dallePrompt = `Edit the attached product image(s) into a premium high-end commercial advertising image for ${cleanedProduct}.
-
-THE FIRST ATTACHED IMAGE(S) show the REAL product. This is the exact, immutable object that must appear in the final result:
-- preserve its exact shape, proportions, colors, labels, logo, packaging, textures, cap/handles/accessories and every visible design detail
-- do NOT redesign, reinterpret, recreate, approximate, replace, stylize, or simplify the product
-- do NOT generate alternate packaging or a different version of the product
-${validated.referenceImage ? `
-The LAST attached image is a sample advertisement, included ONLY as a style/composition reference. Copy from it ONLY: composition, camera framing, lighting, shadows, reflections, color atmosphere, background style and premium advertising feel. Do NOT copy any object, product, packaging, label, logo or color from this reference image.` : ''}
-
-TASK: Place the real product (first image) into a new commercial advertising scene${validated.referenceImage ? ', following the visual style of the reference image' : ''}.
-
-FINAL OUTPUT:
-Professional advertising banner. Theme: ${validated.estilo}. Photorealistic, commercial studio quality, luxury presentation, ultra detailed, 8k quality, masterfully lit, extremely sharp focus. Product identity must match the attached real product at 98-100%.`;
-
           const productImages = Array.isArray(validated.productImage)
             ? validated.productImage
             : [validated.productImage];
+
+          let imageIndexingText = `ATTACHED IMAGES INDEX (1-indexed):`;
+          for (let idx = 0; idx < productImages.length; idx++) {
+            imageIndexingText += `\n- Image ${idx + 1}: The REAL product to be preserved (PRIMARY SOURCE OF TRUTH).`;
+          }
+          if (validated.referenceImage) {
+            imageIndexingText += `\n- Image ${productImages.length + 1} (last): REFERENCE IMAGE for style and composition (SECONDARY REFERENCE).`;
+          }
+
+          let dallePrompt = `Create a premium high-end commercial advertising image for ${cleanedProduct} using the attached images.
+
+${imageIndexingText}
+
+OBJECTIVE:
+Generate a commercial advertising banner that preserves the exact real product from the product images while reproducing the visual scene and language of the reference image.
+
+${validated.referenceImage ? `REFERENCE IMAGE RECREATION INSTRUCTIONS:
+You MUST treat the last attached image (Image ${productImages.length + 1}) as an obligatory storyboard to follow, not as an optional suggestion. Your main task is to RECREATE the scene from this reference image almost exactly, substituting only the product/object that appears in it with the real product from the first attached image(s).
+You MUST analyze and replicate the following elements from the reference image:
+- exact composition and camera framing
+- camera angle and camera height
+- type, direction, and intensity of lighting
+- shadows, highlights, and reflections
+- color palette of the background and environment (do NOT apply these colors to the product itself)
+- background style (e.g., studio setup, outdoors, props, pedestals, fabrics, etc.)
+- overall mood and atmospheric aesthetic of the advertisement
+- typographical layout and empty/negative spacing if applicable
+
+DO NOT copy, recreate, reinterpret, or transfer the following from the reference image:
+- the product/object shape or packaging
+- labels or logos
+- physical textures applied to the reference product
+- colors of the reference product
+- dimensions or materials of the reference product` : ''}
+
+STRICT PRODUCT PRESERVATION RULES (MANDATORY):
+Use the first attached image(s) (Image 1${productImages.length > 1 ? ` to Image ${productImages.length}` : ''}) as the exact, immutable product to appear in the final advertisement.
+It is strictly forbidden to:
+- alter the product design, shape, or physical details
+- modify geometry, dimensions, or proportions
+- redesign packaging, labels, or logos
+- change original colors, materials, or textures
+- replace the cap, handles, lid, or accessories of the container
+- smooth or simplify the product's natural surface details
+
+ALLOWED PRODUCT MODIFICATIONS:
+- adjust camera angle to match the reference scene
+- reposition and scale the product proportionally to fit the composition
+- add realistic shadows, highlights, and reflections matching the reference lighting environment
+
+PRODUCT VALIDATION:
+Maintain 98% to 100% visual similarity to the product shown in the first image(s). If preserving the product's identity conflicts with the reference style, ALWAYS prioritize preserving the product.
+
+FINAL OUTPUT:
+Professional advertising banner. Theme: ${validated.estilo}. Photorealistic, commercial studio quality, luxury presentation, high-end advertising aesthetics, ultra detailed, 8k quality, masterfully lit, extremely sharp focus.`;
 
           const { url, model } = await generateOpenAIImage(
             dallePrompt,
