@@ -251,6 +251,7 @@ function TemplateSelectionModal({
                 }} 
                 className="hidden" 
                 disabled={isUploading}
+                multiple
               />
             </label>
           </div>
@@ -280,6 +281,7 @@ function TemplateSelectionModal({
                   }} 
                   className="hidden" 
                   disabled={isUploading}
+                  multiple
                 />
               </label>
 
@@ -681,17 +683,28 @@ export default function LandingGenPage() {
   };
 
   const handleFileUpload = async (e, prefix = '') => {
-    const file = e.target.files[0];
-    if (!file) return null;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return null;
     
     setIsUploading(true);
-    const uploadedName = await uploadLandingTemplate(file, prefix);
-    setIsUploading(false);
+    let lastUploadedName = null;
+    try {
+      for (const file of files) {
+        const uploadedName = await uploadLandingTemplate(file, prefix);
+        if (uploadedName) {
+          lastUploadedName = uploadedName;
+        }
+      }
+    } catch (err) {
+      console.error('Error during bulk file upload:', err);
+    } finally {
+      setIsUploading(false);
+    }
     
-    if (uploadedName) {
-      setSelectedTemplate(uploadedName);
+    if (lastUploadedName) {
+      setSelectedTemplate(lastUploadedName);
       setCustomImage('');
-      return uploadedName;
+      return lastUploadedName;
     }
     return null;
   };
