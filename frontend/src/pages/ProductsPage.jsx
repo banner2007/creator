@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore.js';
-import { Plus, Tag, DollarSign, Trash2, Edit3, Archive, Eye, Folder, Layers, Sparkles } from 'lucide-react';
+import { Plus, Tag, DollarSign, Trash2, Edit3, Archive, Eye, Folder, Layers, Sparkles, Upload, X, RefreshCw } from 'lucide-react';
+import { storage, ref, uploadBytes, getDownloadURL } from '../utils/firebase.js';
+import { getProductDisplayImage, getProductImagesArray } from '../utils/productUtils.js';
 
 export default function ProductsPage() {
   const {
@@ -20,7 +22,8 @@ export default function ProductsPage() {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState(0);
   const [category, setCategory] = useState('');
-  const [coverImage, setCoverImage] = useState('');
+  const [productImages, setProductImages] = useState(['', '', '']);
+  const [slotUploading, setSlotUploading] = useState([false, false, false]);
   const [status, setStatus] = useState('draft');
 
   const [loading, setLoading] = useState(false);
@@ -35,7 +38,7 @@ export default function ProductsPage() {
     setDescription('');
     setPrice(0);
     setCategory('');
-    setCoverImage('');
+    setProductImages(['', '', '']);
     setStatus('draft');
     setShowModal(true);
   };
@@ -46,9 +49,43 @@ export default function ProductsPage() {
     setDescription(product.description || '');
     setPrice(parseFloat(product.price) || 0);
     setCategory(product.category || '');
-    setCoverImage(product.cover_image || '');
+    setProductImages(getProductImagesArray(product.cover_image));
     setStatus(product.status || 'draft');
     setShowModal(true);
+  };
+
+  const handleProductImageUpload = async (index, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const newUploading = [...slotUploading];
+    newUploading[index] = true;
+    setSlotUploading(newUploading);
+    
+    try {
+      const productId = editingProduct ? editingProduct.id : `temp-${Date.now()}`;
+      const fileName = `products/${productId}-${index}-${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+      const storageRef = ref(storage, fileName);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      
+      const newImages = [...productImages];
+      newImages[index] = url;
+      setProductImages(newImages);
+    } catch (err) {
+      console.error('Error uploading product photo:', err);
+      alert('Error al subir la foto del producto: ' + err.message);
+    } finally {
+      const newUploading = [...slotUploading];
+      newUploading[index] = false;
+      setSlotUploading(newUploading);
+    }
+  };
+
+  const removeProductImage = (index) => {
+    const newImages = [...productImages];
+    newImages[index] = '';
+    setProductImages(newImages);
   };
 
   const handleSubmit = async (e) => {
@@ -60,7 +97,7 @@ export default function ProductsPage() {
       description,
       price: parseFloat(price) || 0,
       category,
-      cover_image: coverImage || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80',
+      cover_image: JSON.stringify(productImages),
       status
     };
 
@@ -129,7 +166,7 @@ export default function ProductsPage() {
               {/* Product Cover Image */}
               <div class="aspect-square w-full relative bg-slate-950 overflow-hidden">
                 <img 
-                  src={product.cover_image} 
+                  src={getProductDisplayImage(product.cover_image)} 
                   alt={product.name} 
                   class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   onError={(e) => {
@@ -259,16 +296,64 @@ export default function ProductsPage() {
                 />
               </div>
 
-              <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-semibold text-slate-400">URL de Imagen de Portada</label>
-                <input 
-                  type="text" 
-                  placeholder="https://ejemplo.com/foto-producto.jpg" 
-                  class="glass-input"
-                  value={coverImage}
-                  onChange={e => setCoverImage(e.target.value)}
-                />
-                <span class="text-[10px] text-slate-500">Deja vacío para usar una imagen genérica por defecto.</span>
+              <div class="space-y-3.5">
+                <div>
+                  <label class="text-xs font-bold text-slate-400 tracking-wide block">Fotos del Producto</label>
+                  <span class="text-[10px] text-slate-500 font-medium">(agrega de 1 a 3 fotos de tu producto)</span>
+                </div>
+
+                {/* 3 Grid slots */}
+                <div class="grid grid-cols-3 gap-4">
+                  {[0, 1, 2].map(index => {
+                    const imgUrl = productImages[index];
+                    const uploading = slotUploading[index];
+
+                    return (
+                      <div key={index} class="aspect-square relative flex items-center justify-center">
+                        {uploading ? (
+                          <div class="absolute inset-0 rounded-2xl bg-slate-950 border border-white/5 flex items-center justify-center">
+                            <RefreshCw class="w-5 h-5 text-purple-400 animate-spin" />
+                          </div>
+                        ) : imgUrl ? (
+                          <div class="absolute inset-0 rounded-2xl overflow-hidden border border-white/10 group shadow-md bg-slate-950">
+                            <img src={imgUrl} alt={`Product ${index + 1}`} class="w-full h-full object-cover" />
+                            <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                              <label class="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white cursor-pointer transition-colors mr-1">
+                                <Upload class="w-3.5 h-3.5" />
+                                <input 
+                                  type="file" 
+                                  accept="image/*" 
+                                  onChange={e => handleProductImageUpload(index, e)} 
+                                  class="hidden" 
+                                />
+                              </label>
+                              {index > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeProductImage(index)}
+                                  class="p-1.5 rounded-lg bg-red-600/80 hover:bg-red-600 text-white transition-colors"
+                                >
+                                  <X class="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <label class="absolute inset-0 border-2 border-dashed border-white/10 hover:border-purple-500/40 bg-white/[0.01] hover:bg-purple-500/[0.01] rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 group">
+                            <Plus class="w-4 h-4 text-slate-500 group-hover:text-purple-400 transition-colors mb-1" />
+                            <span class="text-[9px] font-bold text-slate-500 group-hover:text-slate-300 uppercase tracking-wider">Imagen {index + 1}</span>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              onChange={e => handleProductImageUpload(index, e)} 
+                              class="hidden" 
+                            />
+                          </label>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               <div class="flex flex-col gap-1.5">

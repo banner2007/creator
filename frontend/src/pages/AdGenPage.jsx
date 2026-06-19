@@ -7,6 +7,7 @@ import {
   Play, X, Globe, Maximize2, FileText, CheckCircle2, Eye
 } from 'lucide-react';
 import { storage, ref, uploadBytes, getDownloadURL } from '../utils/firebase.js';
+import { getProductDisplayImage, getProductImagesArray } from '../utils/productUtils.js';
 
 // Sub-component for template item inside gallery modal
 function TemplateGridItem({ template, onSelect, getTemplateDownloadUrl }) {
@@ -285,6 +286,7 @@ export default function AdGenPage() {
     fetchProjectImages,
     createProduct,
     createProject,
+    updateProduct,
     
     // Firebase templates
     firebaseTemplates,
@@ -396,11 +398,7 @@ export default function AdGenPage() {
       if (selectedProductForGen.id === 'new') {
         setProductImages(['', '', '']);
       } else {
-        setProductImages([
-          selectedProductForGen.cover_image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80',
-          '',
-          ''
-        ]);
+        setProductImages(getProductImagesArray(selectedProductForGen.cover_image));
       }
       setSuccessImages([]);
     }
@@ -436,7 +434,7 @@ export default function AdGenPage() {
         description: newProdDescription,
         price: parseFloat(newProdPrice) || 0,
         category: newProdCategory,
-        cover_image: productImages[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=400&q=80',
+        cover_image: JSON.stringify(productImages),
         status: 'active'
       };
 
@@ -550,6 +548,14 @@ export default function AdGenPage() {
       const newImages = [...productImages];
       newImages[index] = url;
       setProductImages(newImages);
+
+      // Persist to database if existing product
+      if (selectedProductForGen.id !== 'new') {
+        const serialized = JSON.stringify(newImages);
+        await updateProduct(selectedProductForGen.id, { cover_image: serialized });
+        setSelectedProductForGen(prev => ({ ...prev, cover_image: serialized }));
+        fetchProducts();
+      }
     } catch (err) {
       console.error('Error uploading product photo:', err);
       alert('Error al subir la foto del producto: ' + err.message);
@@ -560,10 +566,18 @@ export default function AdGenPage() {
     }
   };
 
-  const removeProductImage = (index) => {
+  const removeProductImage = async (index) => {
     const newImages = [...productImages];
     newImages[index] = '';
     setProductImages(newImages);
+
+    // Persist to database if existing product
+    if (selectedProductForGen.id !== 'new') {
+      const serialized = JSON.stringify(newImages);
+      await updateProduct(selectedProductForGen.id, { cover_image: serialized });
+      setSelectedProductForGen(prev => ({ ...prev, cover_image: serialized }));
+      fetchProducts();
+    }
   };
 
   const handleDownloadGuide = () => {
@@ -649,7 +663,7 @@ export default function AdGenPage() {
                 {/* Product Cover Image */}
                 <div className="aspect-square w-full relative bg-slate-950 overflow-hidden rounded-t-3xl">
                   <img 
-                    src={product.cover_image} 
+                    src={getProductDisplayImage(product.cover_image)} 
                     alt={product.name} 
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     onError={(e) => {
