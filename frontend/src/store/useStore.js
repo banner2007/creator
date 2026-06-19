@@ -67,6 +67,7 @@ export const useStore = create((set, get) => ({
   sections: [], // Active landing page sections
   products: [],
   firebaseTemplates: [],
+  landingTemplates: [],
   templateUrlsCache: {},
   isLoadingTemplates: false,
 
@@ -496,10 +497,10 @@ export const useStore = create((set, get) => ({
     }
   },
 
-  uploadFirebaseTemplate: async (file) => {
+  uploadFirebaseTemplate: async (file, prefix = '') => {
     set({ isLoadingTemplates: true });
     try {
-      const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+      const fileName = `${prefix}${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
       const originalPath = `templates/WEBP_100%/${fileName}`;
       const thumbnailPath = `templates/WEBP_25%/${fileName}`;
       
@@ -534,11 +535,11 @@ export const useStore = create((set, get) => ({
         }
       }));
       
-      return true;
+      return fileName;
     } catch (err) {
       console.error('Error uploading template:', err);
       alert('Error al subir la plantilla a Firebase: ' + err.message);
-      return false;
+      return null;
     } finally {
       set({ isLoadingTemplates: false });
     }
@@ -580,6 +581,116 @@ export const useStore = create((set, get) => ({
     } catch (err) {
       console.error('Error deleting template:', err);
       alert('Error al borrar la plantilla de Firebase: ' + err.message);
+      return false;
+    } finally {
+      set({ isLoadingTemplates: false });
+    }
+  },
+
+  // Landing Templates Actions
+  fetchLandingTemplates: async () => {
+    if (get().landingTemplates.length > 0) return;
+    
+    set({ isLoadingTemplates: true });
+    try {
+      const templatesRef = ref(storage, 'landing_templates/WEBP_25%');
+      const res = await listAll(templatesRef);
+      const files = res.items.map(item => ({
+        name: item.name,
+        fullPath: item.fullPath,
+        baseName: item.name
+      }));
+      
+      files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+      
+      set({ landingTemplates: files });
+    } catch (err) {
+      console.error('Error fetching landing templates from Firebase:', err);
+    } finally {
+      set({ isLoadingTemplates: false });
+    }
+  },
+
+  uploadLandingTemplate: async (file, prefix = '') => {
+    set({ isLoadingTemplates: true });
+    try {
+      const fileName = `${prefix}${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+      const originalPath = `landing_templates/WEBP_100%/${fileName}`;
+      const thumbnailPath = `landing_templates/WEBP_25%/${fileName}`;
+      
+      // 1. Upload original
+      const originalRef = ref(storage, originalPath);
+      await uploadBytes(originalRef, file);
+      
+      // 2. Create and upload thumbnail
+      const thumbnailBlob = await createThumbnail(file, 400, 400);
+      const thumbnailRef = ref(storage, thumbnailPath);
+      await uploadBytes(thumbnailRef, thumbnailBlob);
+      
+      const newTemplate = {
+        name: fileName,
+        fullPath: thumbnailPath,
+        baseName: fileName
+      };
+      
+      set(state => ({
+        landingTemplates: [newTemplate, ...state.landingTemplates]
+      }));
+      
+      // Get URLs and cache them
+      const originalUrl = await getDownloadURL(originalRef);
+      const thumbnailUrl = await getDownloadURL(thumbnailRef);
+      set(state => ({
+        templateUrlsCache: {
+          ...state.templateUrlsCache,
+          [originalPath]: originalUrl,
+          [thumbnailPath]: thumbnailUrl
+        }
+      }));
+      
+      return fileName;
+    } catch (err) {
+      console.error('Error uploading landing template:', err);
+      alert('Error al subir la plantilla de landing a Firebase: ' + err.message);
+      return null;
+    } finally {
+      set({ isLoadingTemplates: false });
+    }
+  },
+
+  deleteLandingTemplate: async (fileName) => {
+    set({ isLoadingTemplates: true });
+    try {
+      const originalPath = `landing_templates/WEBP_100%/${fileName}`;
+      const thumbnailPath = `landing_templates/WEBP_25%/${fileName}`;
+      
+      try {
+        await deleteObject(ref(storage, originalPath));
+      } catch (e) {
+        console.warn(`Could not delete original: ${originalPath}`, e);
+      }
+      
+      try {
+        await deleteObject(ref(storage, thumbnailPath));
+      } catch (e) {
+        console.warn(`Could not delete thumbnail: ${thumbnailPath}`, e);
+      }
+      
+      set(state => {
+        const filteredTemplates = state.landingTemplates.filter(t => t.name !== fileName);
+        const updatedCache = { ...state.templateUrlsCache };
+        delete updatedCache[originalPath];
+        delete updatedCache[thumbnailPath];
+        return {
+          landingTemplates: filteredTemplates,
+          templateUrlsCache: updatedCache
+        };
+      });
+      
+      return true;
+    } catch (err) {
+      console.error('Error deleting landing template:', err);
+      alert('Error al borrar la plantilla de landing de Firebase: ' + err.message);
       return false;
     } finally {
       set({ isLoadingTemplates: false });

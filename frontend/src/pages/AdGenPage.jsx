@@ -59,9 +59,10 @@ function TemplateSelectionModal({
   isUploading, 
   handleFileUpload 
 }) {
-  if (!isOpen) return null;
   const [page, setPage] = useState(1);
   const itemsPerPage = 8;
+
+  if (!isOpen) return null;
 
   const filtered = templates.filter(t => 
     t.name.toLowerCase().includes(searchQuery.toLowerCase())

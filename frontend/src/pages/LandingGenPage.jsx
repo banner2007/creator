@@ -10,7 +10,7 @@ import { storage, ref, uploadBytes, getDownloadURL } from '../utils/firebase.js'
 import { getProductDisplayImage, getProductImagesArray } from '../utils/productUtils.js';
 
 // Sub-component for template item inside gallery modal
-function TemplateGridItem({ template, onSelect, getTemplateDownloadUrl, onDeleteTemplate }) {
+function TemplateGridItem({ template, onSelect, getTemplateDownloadUrl, onDeleteTemplate, isSelected }) {
   const [imageUrl, setImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -31,7 +31,11 @@ function TemplateGridItem({ template, onSelect, getTemplateDownloadUrl, onDelete
   return (
     <div 
       onClick={onSelect}
-      className="glass-panel border border-white/5 rounded-2xl overflow-hidden cursor-pointer hover:border-purple-500/50 hover:bg-purple-500/[0.02] hover:scale-[1.01] transition-all duration-300 aspect-square relative group"
+      className={`glass-panel border rounded-2xl overflow-hidden cursor-pointer hover:scale-[1.01] transition-all duration-300 aspect-[3/4] relative group ${
+        isSelected 
+          ? 'border-purple-500 ring-2 ring-purple-500/40 shadow-lg shadow-purple-500/10' 
+          : 'border-white/5 hover:border-purple-500/30'
+      }`}
     >
       {isLoading ? (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40">
@@ -41,6 +45,13 @@ function TemplateGridItem({ template, onSelect, getTemplateDownloadUrl, onDelete
         <img src={imageUrl} alt={template.name} className="w-full h-full object-cover" />
       )}
       
+      {/* Selection overlay indicator */}
+      {isSelected && (
+        <div className="absolute top-3 left-3 bg-purple-600 text-white rounded-full p-1 border border-purple-400 shadow-md z-10 animate-scaleIn">
+          <Check className="w-3 h-3" />
+        </div>
+      )}
+
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-3 flex flex-col justify-end">
         <h5 className="text-[10px] font-bold text-white truncate">{template.name.replace(/\.[^/.]+$/, "")}</h5>
       </div>
@@ -53,7 +64,7 @@ function TemplateGridItem({ template, onSelect, getTemplateDownloadUrl, onDelete
             onDeleteTemplate(template.name);
           }
         }}
-        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/75 hover:bg-red-600/95 text-white opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity duration-200"
+        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/75 hover:bg-red-600/95 text-white opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity duration-200 z-10"
         title="Eliminar plantilla"
       >
         <Trash2 className="w-3.5 h-3.5" />
@@ -73,38 +84,139 @@ function TemplateSelectionModal({
   setSearchQuery, 
   isUploading, 
   handleFileUpload,
-  onDeleteTemplate
+  onDeleteTemplate,
+  selectedTemplate
 }) {
-  if (!isOpen) return null;
+  const [activeTab, setActiveTab] = useState('hero');
   const [page, setPage] = useState(1);
-  const itemsPerPage = 8;
+  const [localSelected, setLocalSelected] = useState(selectedTemplate || '');
 
-  const filtered = templates.filter(t => 
-    t.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Reset page when active tab changes
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab]);
+
+  // Sync selection when selectedTemplate changes or when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setLocalSelected(selectedTemplate || '');
+    }
+  }, [selectedTemplate, isOpen]);
+
+  if (!isOpen) return null;
+
+  const categories = [
+    { id: 'hero', name: 'Hero' },
+    { id: 'oferta', name: 'Oferta' },
+    { id: 'antes-despues', name: 'Antes/Después' },
+    { id: 'beneficios', name: 'Beneficios' },
+    { id: 'tabla-comparativa', name: 'Tabla Comparativa' },
+    { id: 'prueba-autoridad', name: 'Prueba de Autoridad' },
+    { id: 'testimonios', name: 'Testimonios' },
+    { id: 'modo-uso', name: 'Modo de Uso' },
+    { id: 'logistica', name: 'Logística' },
+    { id: 'preguntas-frecuentes', name: 'Preguntas Frecuentes' }
+  ];
+
+  const activeCategory = categories.find(c => c.id === activeTab) || categories[0];
+  const itemsPerPage = 12; // 12 items (fits a 6 column grid nicely)
+
+  const filtered = templates.filter(t => {
+    const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+
+    const filename = t.name.toLowerCase();
+    let fileCategory = 'hero'; // default fallback
+    
+    for (const cat of categories) {
+      if (filename.startsWith(cat.id + '_')) {
+        fileCategory = cat.id;
+        break;
+      }
+    }
+
+    return fileCategory === activeTab;
+  });
   
   const totalP = Math.ceil(filtered.length / itemsPerPage) || 1;
   const displayed = filtered.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md px-4 py-8">
-      <div className="w-full max-w-4xl glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 relative max-h-[90vh] overflow-y-auto flex flex-col justify-between">
+      <div className="w-full max-w-6xl glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 relative max-h-[90vh] overflow-y-auto flex flex-col justify-between">
         <div>
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-6">
+          <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-5">
             <div>
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
                 <Folder className="w-5 h-5 text-purple-400" />
-                <span>Estructuras de Landing de Referencia</span>
+                <span>Plantillas de Secciones</span>
+                <span className="px-2.5 py-0.5 rounded-md bg-purple-600/25 border border-purple-500/30 text-purple-400 text-[11px] font-extrabold tracking-wide">{filtered.length}</span>
               </h3>
-              <p className="text-xs text-slate-400 mt-1">Selecciona una sección de landing de referencia para estructurar el diseño de la IA.</p>
+              <p className="text-xs text-slate-400 mt-1">Selecciona una sección de landing de referencia para guiar el diseño de la IA.</p>
             </div>
+            
+            <div className="flex items-center gap-4">
+              {/* Ecom Magic visual indicator */}
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/10 bg-slate-900 text-slate-300 text-xs font-semibold">
+                <Sliders className="w-3.5 h-3.5 text-purple-400" />
+                <span>Ecom Magic</span>
+              </div>
+              <button 
+                type="button" 
+                onClick={onClose}
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Categories Tab Bar */}
+          <div className="flex items-center gap-2 mb-5">
             <button 
               type="button" 
-              onClick={onClose}
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+              onClick={() => {
+                const container = document.getElementById('categories-tab-container');
+                if (container) container.scrollLeft -= 200;
+              }}
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-slate-400 hover:text-white transition-colors"
             >
-              <X className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <div 
+              id="categories-tab-container"
+              className="flex-1 flex gap-2 overflow-x-auto scrollbar-none scroll-smooth pb-1"
+            >
+              {categories.map(cat => {
+                const isActive = activeTab === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setActiveTab(cat.id)}
+                    className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 ${
+                      isActive 
+                        ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' 
+                        : 'bg-slate-950 border border-white/5 text-slate-400 hover:text-white hover:bg-slate-900'
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button 
+              type="button" 
+              onClick={() => {
+                const container = document.getElementById('categories-tab-container');
+                if (container) container.scrollLeft += 200;
+              }}
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-slate-400 hover:text-white transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
@@ -127,13 +239,15 @@ function TemplateSelectionModal({
               ) : (
                 <Upload className="w-4 h-4" />
               )}
-              <span>{isUploading ? 'Subiendo plantilla...' : 'Subir Estructura Personalizada'}</span>
+              <span>{isUploading ? 'Subiendo...' : `Subir a pestaña ${activeCategory.name}`}</span>
               <input 
                 type="file" 
                 accept="image/*" 
-                onChange={e => {
-                  handleFileUpload(e);
-                  setPage(1);
+                onChange={async (e) => {
+                  const newName = await handleFileUpload(e, activeCategory.id + '_');
+                  if (newName) {
+                    setLocalSelected(newName);
+                  }
                 }} 
                 className="hidden" 
                 disabled={isUploading}
@@ -143,58 +257,117 @@ function TemplateSelectionModal({
 
           {/* Templates Grid */}
           <div className="min-h-[300px]">
-            {displayed.length === 0 ? (
-              <div className="text-center py-16 border border-white/5 rounded-2xl bg-white/[0.01]">
-                <p className="text-sm text-slate-400">No se encontraron plantillas.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {displayed.map(temp => (
-                  <TemplateGridItem
-                    key={temp.name}
-                    template={temp}
-                    onSelect={() => {
-                      onSelect(temp.name);
-                      onClose();
-                    }}
-                    getTemplateDownloadUrl={getTemplateDownloadUrl}
-                    onDeleteTemplate={onDeleteTemplate}
-                  />
-                ))}
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
+              {/* Tarjeta de subida integrada para la pestaña activa */}
+              <label className="border-2 border-dashed border-white/10 hover:border-purple-500/50 bg-white/[0.02] hover:bg-purple-500/[0.02] rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 group aspect-[3/4] p-4 text-center">
+                {isUploading ? (
+                  <RefreshCw className="w-6 h-6 text-purple-400 animate-spin mb-2" />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:bg-purple-600 group-hover:text-white transition-all duration-300 mb-2">
+                    <Upload className="w-4.5 h-4.5" />
+                  </div>
+                )}
+                <span className="text-[11px] font-bold text-slate-200 group-hover:text-purple-400 transition-colors">Subir Imagen</span>
+                <span className="text-[9px] text-slate-500 mt-1 line-clamp-2">Para pestaña {activeCategory.name}</span>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={async (e) => {
+                    const newName = await handleFileUpload(e, activeCategory.id + '_');
+                    if (newName) {
+                      setLocalSelected(newName);
+                    }
+                  }} 
+                  className="hidden" 
+                  disabled={isUploading}
+                />
+              </label>
+
+              {displayed.map(temp => (
+                <TemplateGridItem
+                  key={temp.name}
+                  template={temp}
+                  isSelected={localSelected === temp.name}
+                  onSelect={() => setLocalSelected(temp.name)}
+                  getTemplateDownloadUrl={getTemplateDownloadUrl}
+                  onDeleteTemplate={onDeleteTemplate}
+                />
+              ))}
+            </div>
+            {displayed.length === 0 && (
+              <p className="text-center text-xs text-slate-500 mt-6 italic">No hay más plantillas predefinidas en esta sección. ¡Sube las tuyas!</p>
             )}
           </div>
         </div>
 
-        {/* Pagination */}
-        {totalP > 1 && (
-          <div className="flex items-center justify-between border-t border-white/5 pt-4 mt-6">
-            <span className="text-[11px] text-slate-500">
-              Mostrando {Math.min(filtered.length, (page - 1) * itemsPerPage + 1)}-{Math.min(filtered.length, page * itemsPerPage)} de {filtered.length} plantillas
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setPage(prev => Math.max(1, prev - 1))}
-                disabled={page === 1}
-                className="p-2 rounded-xl border border-white/5 bg-slate-950 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="text-xs text-slate-300 font-semibold">{page} / {totalP}</span>
-              <button
-                type="button"
-                onClick={() => setPage(prev => Math.min(totalP, prev + 1))}
-                disabled={page === totalP}
-                className="p-2 rounded-xl border border-white/5 bg-slate-950 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+        {/* Pagination & Footer Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-white/5 pt-4 mt-6 gap-4">
+          <div>
+            {totalP > 1 ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                  disabled={page === 1}
+                  className="p-2 rounded-xl border border-white/5 bg-slate-950 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-xs text-slate-300 font-semibold">{page} / {totalP}</span>
+                <button
+                  type="button"
+                  onClick={() => setPage(prev => Math.min(totalP, prev + 1))}
+                  disabled={page === totalP}
+                  className="p-2 rounded-xl border border-white/5 bg-slate-950 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+                <span className="text-[10px] text-slate-500 ml-2">
+                  (Mostrando {Math.min(filtered.length, (page - 1) * itemsPerPage + 1)}-{Math.min(filtered.length, page * itemsPerPage)} de {filtered.length})
+                </span>
+              </div>
+            ) : (
+              <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Haz clic en un template para seleccionarlo</span>
+            )}
           </div>
-        )}
+
+          <div className="flex items-center gap-3 justify-end">
+            <button
+              type="button"
+              onClick={() => alert('Generación Masiva próximamente en la versión PRO')}
+              className="px-4 py-2.5 rounded-xl bg-purple-950/20 border border-purple-500/30 text-purple-300 text-xs font-bold flex items-center gap-1.5 hover:bg-purple-950/40 transition-all relative group"
+            >
+              <span>Generación Masiva</span>
+              <span className="px-1.5 py-0.5 text-[8px] font-extrabold bg-purple-500 text-white rounded-full uppercase tracking-wider scale-90">Nuevo</span>
+            </button>
+            
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 text-xs font-bold transition-all"
+            >
+              Cancelar
+            </button>
+
+            <button
+              type="button"
+              disabled={!localSelected}
+              onClick={() => {
+                if (localSelected) {
+                  onSelect(localSelected);
+                  onClose();
+                }
+              }}
+              className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md transition-all disabled:opacity-30 disabled:hover:bg-purple-600"
+            >
+              Use Template
+            </button>
+          </div>
+        </div>
       </div>
     </div>
+  );
+}
   );
 }
 
@@ -305,13 +478,13 @@ export default function LandingGenPage() {
     createProject,
     updateProduct,
     
-    // Firebase templates
-    firebaseTemplates,
+    // Landing templates
+    landingTemplates,
     isLoadingTemplates,
-    fetchFirebaseTemplates,
+    fetchLandingTemplates,
     getTemplateDownloadUrl,
-    uploadFirebaseTemplate,
-    deleteFirebaseTemplate
+    uploadLandingTemplate,
+    deleteLandingTemplate
   } = useStore();
 
   // Navigation state (Null means show product grid dashboard)
@@ -372,7 +545,7 @@ export default function LandingGenPage() {
   useEffect(() => {
     fetchProducts();
     fetchProjects();
-    fetchFirebaseTemplates();
+    fetchLandingTemplates();
   }, []);
 
   useEffect(() => {
@@ -388,16 +561,16 @@ export default function LandingGenPage() {
   }, [projects, selectedProject]);
 
   useEffect(() => {
-    if (firebaseTemplates.length > 0 && !selectedTemplate) {
-      setSelectedTemplate(firebaseTemplates[0].name);
+    if (landingTemplates.length > 0 && !selectedTemplate) {
+      setSelectedTemplate(landingTemplates[0].name);
     }
-  }, [firebaseTemplates]);
+  }, [landingTemplates]);
 
   // Handle template selection and fetch preview URL
   useEffect(() => {
     if (selectedTemplate) {
       const loadTemplateUrl = async () => {
-        const path = `templates/WEBP_25%/${selectedTemplate}`;
+        const path = `landing_templates/WEBP_25%/${selectedTemplate}`;
         const url = await getTemplateDownloadUrl(path);
         setSelectedTemplateUrl(url);
       };
@@ -471,7 +644,7 @@ export default function LandingGenPage() {
     if (customImage.trim()) {
       refImageUrl = customImage.trim();
     } else if (selectedTemplate) {
-      const highQualityPath = `templates/WEBP_100%/${selectedTemplate}`;
+      const highQualityPath = `landing_templates/WEBP_100%/${selectedTemplate}`;
       refImageUrl = await getTemplateDownloadUrl(highQualityPath);
     }
 
@@ -509,20 +682,20 @@ export default function LandingGenPage() {
     }
   };
 
-  const handleFileUpload = async (e) => {
+  const handleFileUpload = async (e, prefix = '') => {
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file) return null;
     
     setIsUploading(true);
-    const success = await uploadFirebaseTemplate(file);
+    const uploadedName = await uploadLandingTemplate(file, prefix);
     setIsUploading(false);
     
-    if (success) {
-      if (firebaseTemplates.length > 0) {
-        setSelectedTemplate(firebaseTemplates[0].name);
-        setCustomImage('');
-      }
+    if (uploadedName) {
+      setSelectedTemplate(uploadedName);
+      setCustomImage('');
+      return uploadedName;
     }
+    return null;
   };
 
   const handleReferenceUpload = async (e) => {
@@ -1260,7 +1433,7 @@ export default function LandingGenPage() {
       <TemplateSelectionModal
         isOpen={showTemplateModal}
         onClose={() => setShowTemplateModal(false)}
-        templates={firebaseTemplates}
+        templates={landingTemplates}
         onSelect={(name) => {
           setSelectedTemplate(name);
           setCustomImage('');
@@ -1270,7 +1443,8 @@ export default function LandingGenPage() {
         setSearchQuery={setSearchQuery}
         isUploading={isUploading}
         handleFileUpload={handleFileUpload}
-        onDeleteTemplate={deleteFirebaseTemplate}
+        onDeleteTemplate={deleteLandingTemplate}
+        selectedTemplate={selectedTemplate}
       />
 
       {/* Videotutorial Modal */}
