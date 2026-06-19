@@ -368,8 +368,6 @@ function TemplateSelectionModal({
     </div>
   );
 }
-  );
-}
 
 // Modal for Video Tutorial
 function TutorialModal({ isOpen, onClose }) {
