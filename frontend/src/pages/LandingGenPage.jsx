@@ -4,7 +4,8 @@ import {
   Sparkles, Sliders, Download, Wand2, RefreshCw, 
   FileImage, HelpCircle, Check, Search, Upload, Trash2, 
   ChevronLeft, ChevronRight, ArrowLeft, Plus, DollarSign, Folder,
-  Play, X, Globe, Maximize2, FileText, CheckCircle2, Eye, Palette
+  Play, X, Globe, Maximize2, FileText, CheckCircle2, Eye, Palette,
+  Users, Tag, Truck, Info
 } from 'lucide-react';
 import { storage, ref, uploadBytes, getDownloadURL } from '../utils/firebase.js';
 import { getProductDisplayImage, getProductImagesArray } from '../utils/productUtils.js';
@@ -505,6 +506,21 @@ export default function LandingGenPage() {
   const [customStyle, setCustomStyle] = useState('');
   const [calidad, setCalidad] = useState('medio');
 
+  // Personalización del Bloque states
+  const [charNationality, setCharNationality] = useState('Colombia');
+  const [charGender, setCharGender] = useState('Mujer');
+  const [charAgeRange, setCharAgeRange] = useState('25 - 35');
+
+  const [offerAntes1, setOfferAntes1] = useState('');
+  const [offerPrecio1, setOfferPrecio1] = useState('0');
+  const [offerAntes2, setOfferAntes2] = useState('');
+  const [offerPrecio2, setOfferPrecio2] = useState('0');
+  const [offerAntes3, setOfferAntes3] = useState('');
+  const [offerPrecio3, setOfferPrecio3] = useState('0');
+  const [offerCurrency, setOfferCurrency] = useState('Estados Unidos — USD ($)');
+
+  const [logisticsCountry, setLogisticsCountry] = useState('');
+
   // Pagination & Search State (inside template selection modal)
   const [searchQuery, setSearchQuery] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -650,8 +666,50 @@ export default function LandingGenPage() {
 
     // Build rich prompt for landing section layout
     let promptText = `Landing page section composition. Product: ${currentProduct.name}. Background color: ${bgColor}. Description: ${currentProduct.description}. referencing selected composition layout.`;
-    if (customStyle.trim()) {
-      promptText += ` Style customization: ${customStyle}`;
+    
+    if (customStyleEnabled) {
+      let personalizationParts = [];
+      
+      // Character Adaptation info
+      if (charNationality || charGender || charAgeRange) {
+        let charDesc = 'Target Audience / Characters:';
+        if (charNationality) charDesc += ` Nationality/Appearance: ${charNationality}.`;
+        if (charGender) charDesc += ` Gender: ${charGender}.`;
+        if (charAgeRange) charDesc += ` Age Range: ${charAgeRange}.`;
+        personalizationParts.push(charDesc);
+      }
+      
+      // Offer configuration info
+      let offerDesc = '';
+      if (offerPrecio1 && offerPrecio1 !== '0') {
+        offerDesc += ` 1 unit price: ${offerAntes1 ? `before ${offerAntes1} ${offerCurrency}, ` : ''}now ${offerPrecio1} ${offerCurrency}.`;
+      }
+      if (offerPrecio2 && offerPrecio2 !== '0') {
+        offerDesc += ` 2 units price: ${offerAntes2 ? `before ${offerAntes2} ${offerCurrency}, ` : ''}now ${offerPrecio2} ${offerCurrency}.`;
+      }
+      if (offerPrecio3 && offerPrecio3 !== '0') {
+        offerDesc += ` 3 units price: ${offerAntes3 ? `before ${offerAntes3} ${offerCurrency}, ` : ''}now ${offerPrecio3} ${offerCurrency}.`;
+      }
+      if (offerDesc) {
+        personalizationParts.push(`Offer details (display these exact prices): ${offerDesc}`);
+      }
+      
+      // Logistics country info
+      if (logisticsCountry) {
+        personalizationParts.push(`Logistics / Shipping Target Country: ${logisticsCountry}.`);
+      }
+      
+      if (personalizationParts.length > 0) {
+        promptText += ` Block Personalization Info: ${personalizationParts.join(' | ')}.`;
+      }
+      
+      if (customStyle.trim()) {
+        promptText += ` Additional style/design requirements: ${customStyle}`;
+      }
+    } else {
+      if (customStyle.trim()) {
+        promptText += ` Style customization: ${customStyle}`;
+      }
     }
 
     // Find the first valid product image URL (uploaded or cover image)
@@ -1352,16 +1410,242 @@ export default function LandingGenPage() {
         </div>
 
         {/* Conditional text input for Custom Style directions */}
+        {/* Conditional Personalization Section */}
         {customStyleEnabled && (
-          <div className="flex flex-col gap-2 pt-2 animate-fadeIn">
-            <label className="text-xs font-bold text-slate-400">Detalles e instrucciones de diseño adicionales para la IA</label>
-            <textarea
-              rows="3"
-              placeholder="Ej: Estilo minimalista, sombras suaves, boton de CTA de color verde brillante que diga COMPRAR AHORA..."
-              className="glass-input resize-none text-xs w-full bg-slate-950/60"
-              value={customStyle}
-              onChange={e => setCustomStyle(e.target.value)}
-            />
+          <div className="space-y-6 pt-2 animate-fadeIn">
+            {/* 1. ADAPTAR PERSONAJES */}
+            <div className="p-5 rounded-2xl bg-[#0e0e11]/80 border border-white/5 space-y-4">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 text-slate-200 font-extrabold text-[11px] uppercase tracking-wider">
+                  <Users className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Adaptar Personajes</span>
+                </div>
+                <span className="text-[10px] text-slate-500 font-semibold tracking-wider">(Opcional)</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nacionalidad</label>
+                  <select
+                    value={charNationality}
+                    onChange={e => setCharNationality(e.target.value)}
+                    className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
+                  >
+                    <option value="">No especificado</option>
+                    <option value="Colombia">Colombia</option>
+                    <option value="México">México</option>
+                    <option value="Chile">Chile</option>
+                    <option value="Perú">Perú</option>
+                    <option value="Ecuador">Ecuador</option>
+                    <option value="España">España</option>
+                    <option value="Argentina">Argentina</option>
+                    <option value="Venezuela">Venezuela</option>
+                    <option value="Bolivia">Bolivia</option>
+                    <option value="Guatemala">Guatemala</option>
+                    <option value="Costa Rica">Costa Rica</option>
+                    <option value="Uruguay">Uruguay</option>
+                    <option value="Paraguay">Paraguay</option>
+                    <option value="Honduras">Honduras</option>
+                    <option value="El Salvador">El Salvador</option>
+                    <option value="Nicaragua">Nicaragua</option>
+                    <option value="Panamá">Panamá</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Sexo</label>
+                  <select
+                    value={charGender}
+                    onChange={e => setCharGender(e.target.value)}
+                    className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
+                  >
+                    <option value="">No especificado</option>
+                    <option value="Mujer">Mujer</option>
+                    <option value="Hombre">Hombre</option>
+                    <option value="Ambos">Ambos</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Rango de Edad</label>
+                  <select
+                    value={charAgeRange}
+                    onChange={e => setCharAgeRange(e.target.value)}
+                    className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
+                  >
+                    <option value="">No especificado</option>
+                    <option value="25 - 35">25 - 35</option>
+                    <option value="18 - 24">18 - 24</option>
+                    <option value="36 - 50">36 - 50</option>
+                    <option value="50+">50+</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCharNationality('');
+                    setCharGender('');
+                    setCharAgeRange('');
+                  }}
+                  className="text-xs text-slate-400 hover:text-slate-200 underline cursor-pointer focus:outline-none transition-colors"
+                >
+                  Limpiar opciones de personaje
+                </button>
+              </div>
+            </div>
+
+            {/* 2. CONFIGURACIÓN PARA LA SECCIÓN DE OFERTA */}
+            <div className="p-5 rounded-2xl bg-[#0e0e11]/80 border border-white/5 space-y-4">
+              <div className="flex items-center gap-2 text-slate-200 font-extrabold text-[11px] uppercase tracking-wider">
+                <Tag className="w-3.5 h-3.5 text-purple-400" />
+                <span>Configuración para la Sección de Oferta</span>
+              </div>
+
+              <div className="space-y-3">
+                {/* Headers */}
+                <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
+                  <div className="col-span-3 text-left"></div>
+                  <div className="col-span-4">Antes (Opcional)</div>
+                  <div className="col-span-5">Precio Actual</div>
+                </div>
+
+                {/* 1 unidad */}
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-3 text-xs font-semibold text-slate-400">1 unidad</div>
+                  <div className="col-span-4">
+                    <input
+                      type="text"
+                      placeholder="—"
+                      value={offerAntes1}
+                      onChange={e => setOfferAntes1(e.target.value)}
+                      className="glass-input bg-slate-950/60 text-xs w-full py-2 px-3 text-center"
+                    />
+                  </div>
+                  <div className="col-span-5">
+                    <input
+                      type="text"
+                      placeholder="0"
+                      value={offerPrecio1}
+                      onChange={e => setOfferPrecio1(e.target.value)}
+                      className="glass-input bg-slate-950/60 text-xs w-full py-2 px-3 text-center"
+                    />
+                  </div>
+                </div>
+
+                {/* 2 unidades */}
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-3 text-xs font-semibold text-slate-400">2 unidades</div>
+                  <div className="col-span-4">
+                    <input
+                      type="text"
+                      placeholder="—"
+                      value={offerAntes2}
+                      onChange={e => setOfferAntes2(e.target.value)}
+                      className="glass-input bg-slate-950/60 text-xs w-full py-2 px-3 text-center"
+                    />
+                  </div>
+                  <div className="col-span-5">
+                    <input
+                      type="text"
+                      placeholder="0"
+                      value={offerPrecio2}
+                      onChange={e => setOfferPrecio2(e.target.value)}
+                      className="glass-input bg-slate-950/60 text-xs w-full py-2 px-3 text-center"
+                    />
+                  </div>
+                </div>
+
+                {/* 3 unidades */}
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-3 text-xs font-semibold text-slate-400">3 unidades</div>
+                  <div className="col-span-4">
+                    <input
+                      type="text"
+                      placeholder="—"
+                      value={offerAntes3}
+                      onChange={e => setOfferAntes3(e.target.value)}
+                      className="glass-input bg-slate-950/60 text-xs w-full py-2 px-3 text-center"
+                    />
+                  </div>
+                  <div className="col-span-5">
+                    <input
+                      type="text"
+                      placeholder="0"
+                      value={offerPrecio3}
+                      onChange={e => setOfferPrecio3(e.target.value)}
+                      className="glass-input bg-slate-950/60 text-xs w-full py-2 px-3 text-center"
+                    />
+                  </div>
+                </div>
+
+                {/* Divisa */}
+                <div className="grid grid-cols-12 gap-2 items-center pt-2">
+                  <div className="col-span-3 text-xs font-semibold text-slate-400">Divisa</div>
+                  <div className="col-span-9">
+                    <select
+                      value={offerCurrency}
+                      onChange={e => setOfferCurrency(e.target.value)}
+                      className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
+                    >
+                      <option value="Estados Unidos — USD ($)">Estados Unidos — USD ($)</option>
+                      <option value="Colombia — COP ($)">Colombia — COP ($)</option>
+                      <option value="México — MXN ($)">México — MXN ($)</option>
+                      <option value="Chile — CLP ($)">Chile — CLP ($)</option>
+                      <option value="Perú — PEN (S/)">Perú — PEN (S/)</option>
+                      <option value="Ecuador — USD ($)">Ecuador — USD ($)</option>
+                      <option value="España — EUR (€)">España — EUR (€)</option>
+                      <option value="Argentina — ARS ($)">Argentina — ARS ($)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Warning / Note */}
+                <div className="flex items-start gap-2 pt-2 text-[10px] text-slate-400 font-medium">
+                  <Info className="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
+                  <span>Esta configuración aplica solamente para la generación de la sección de oferta.</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. CONFIGURACIÓN PARA LA SECCIÓN LOGÍSTICA */}
+            <div className="p-5 rounded-2xl bg-[#0e0e11]/80 border border-white/5 space-y-4">
+              <div className="flex items-center gap-2 text-slate-200 font-extrabold text-[11px] uppercase tracking-wider">
+                <Truck className="w-3.5 h-3.5 text-purple-400" />
+                <span>Configuración para la Sección Logística</span>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">País donde se realiza la logística</label>
+                <select
+                  value={logisticsCountry}
+                  onChange={e => setLogisticsCountry(e.target.value)}
+                  className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
+                >
+                  <option value="">Selecciona el país</option>
+                  <option value="Colombia">Colombia</option>
+                  <option value="México">México</option>
+                  <option value="Chile">Chile</option>
+                  <option value="Perú">Perú</option>
+                  <option value="Ecuador">Ecuador</option>
+                  <option value="España">España</option>
+                </select>
+              </div>
+            </div>
+
+            {/* 4. DETALLES ADICIONALES (TEXTAREA ORIGINAL) */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-slate-400">Detalles e instrucciones de diseño adicionales para la IA</label>
+              <textarea
+                rows="3"
+                placeholder="Ej: Estilo minimalista, sombras suaves, boton de CTA de color verde brillante que diga COMPRAR AHORA..."
+                className="glass-input resize-none text-xs w-full bg-slate-950/60"
+                value={customStyle}
+                onChange={e => setCustomStyle(e.target.value)}
+              />
+            </div>
           </div>
         )}
 
