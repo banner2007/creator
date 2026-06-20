@@ -291,7 +291,11 @@ function TemplateSelectionModal({
                   key={temp.name}
                   template={temp}
                   isSelected={localSelected === temp.name}
-                  onSelect={() => setLocalSelected(temp.name)}
+                  onSelect={() => {
+                    setLocalSelected(temp.name);
+                    onSelect(temp.name);
+                    onClose();
+                  }}
                   getTemplateDownloadUrl={getTemplateDownloadUrl}
                   onDeleteTemplate={onDeleteTemplate}
                 />
@@ -1272,7 +1276,7 @@ export default function LandingGenPage() {
       </div>
 
       {/* Generar Nueva Landing Main Form Card */}
-      <form onSubmit={handleGenerate} className="glass-panel p-6 sm:p-8 rounded-3xl border border-white/5 bg-[#0e0e11] space-y-6 shadow-xl relative overflow-hidden">
+      <form id="generar-seccion-landing-form" onSubmit={handleGenerate} className="glass-panel p-6 sm:p-8 rounded-3xl border border-white/5 bg-[#0e0e11] space-y-6 shadow-xl relative overflow-hidden">
         
         {/* Form Title & Subtitle */}
         <div className="flex items-start gap-3 border-b border-white/5 pb-5">
@@ -2106,6 +2110,13 @@ export default function LandingGenPage() {
         onSelect={(name) => {
           setSelectedTemplate(name);
           setCustomImage('');
+          // Smooth scroll to the Generar Sección de Landing form
+          setTimeout(() => {
+            const formElement = document.getElementById('generar-seccion-landing-form');
+            if (formElement) {
+              formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }, 100);
         }}
         getTemplateDownloadUrl={getTemplateDownloadUrl}
         searchQuery={searchQuery}
