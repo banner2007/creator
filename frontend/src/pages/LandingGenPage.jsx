@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore.js';
 import { 
   Sparkles, Sliders, Download, Wand2, RefreshCw, 
@@ -618,7 +618,91 @@ export default function LandingGenPage() {
       setSuccessImages([]);
     }
   }, [selectedProductForGen]);
+  const lastLoadedProductIdRef = useRef(null);
 
+  // Load saved personalization values on product selection
+  useEffect(() => {
+    if (selectedProductForGen) {
+      const savedDataStr = localStorage.getItem(`landing_personalization_${selectedProductForGen.id}`);
+      if (savedDataStr) {
+        try {
+          const data = JSON.parse(savedDataStr);
+          setCharNationality(data.charNationality || '');
+          setCharGender(data.charGender || '');
+          setCharAgeRange(data.charAgeRange || '');
+          setOfferAntes1(data.offerAntes1 || '');
+          setOfferPrecio1(data.offerPrecio1 || '0');
+          setOfferAntes2(data.offerAntes2 || '');
+          setOfferPrecio2(data.offerPrecio2 || '0');
+          setOfferAntes3(data.offerAntes3 || '');
+          setOfferPrecio3(data.offerPrecio3 || '0');
+          setOfferCurrency(data.offerCurrency || 'Estados Unidos — USD ($)');
+          setLogisticsCountry(data.logisticsCountry || '');
+          setProductLink(data.productLink || '');
+          setCustomStyle(data.customStyle || '');
+          setCustomStyleEnabled(!!data.customStyleEnabled);
+        } catch (e) {
+          console.error("Error parsing saved personalization data:", e);
+        }
+      } else {
+        // Reset to default values
+        setCharNationality('Colombia');
+        setCharGender('Mujer');
+        setCharAgeRange('25 - 35');
+        setOfferAntes1('');
+        setOfferPrecio1('0');
+        setOfferAntes2('');
+        setOfferPrecio2('0');
+        setOfferAntes3('');
+        setOfferPrecio3('0');
+        setOfferCurrency('Estados Unidos — USD ($)');
+        setLogisticsCountry('');
+        setProductLink('');
+        setCustomStyle('');
+        setCustomStyleEnabled(false);
+      }
+      lastLoadedProductIdRef.current = selectedProductForGen.id;
+    }
+  }, [selectedProductForGen]);
+
+  // Save personalization values on change
+  useEffect(() => {
+    if (selectedProductForGen && lastLoadedProductIdRef.current === selectedProductForGen.id) {
+      const data = {
+        charNationality,
+        charGender,
+        charAgeRange,
+        offerAntes1,
+        offerPrecio1,
+        offerAntes2,
+        offerPrecio2,
+        offerAntes3,
+        offerPrecio3,
+        offerCurrency,
+        logisticsCountry,
+        productLink,
+        customStyle,
+        customStyleEnabled
+      };
+      localStorage.setItem(`landing_personalization_${selectedProductForGen.id}`, JSON.stringify(data));
+    }
+  }, [
+    selectedProductForGen,
+    charNationality,
+    charGender,
+    charAgeRange,
+    offerAntes1,
+    offerPrecio1,
+    offerAntes2,
+    offerPrecio2,
+    offerAntes3,
+    offerPrecio3,
+    offerCurrency,
+    logisticsCountry,
+    productLink,
+    customStyle,
+    customStyleEnabled
+  ]);
   const handleGenerate = async (e) => {
     e.preventDefault();
     if (!selectedProject) {
@@ -1281,12 +1365,12 @@ export default function LandingGenPage() {
             </div>
 
             {selectedProductForGen.id !== 'new' && (
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 col-span-1 sm:col-span-2">
                 <label className="text-xs font-semibold text-slate-400">Descripción del Producto (para el análisis)</label>
                 <textarea 
-                  rows="2"
+                  rows="6"
                   placeholder="Descripción del producto..." 
-                  className="glass-input bg-slate-950/60 resize-none text-xs"
+                  className="glass-input bg-slate-950/60 resize-y text-xs min-h-[120px]"
                   value={selectedProductForGen.description || ''}
                   onChange={e => {
                     const val = e.target.value;
