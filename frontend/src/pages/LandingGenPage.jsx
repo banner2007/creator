@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore.js';
 import { 
   Sparkles, Sliders, Download, Wand2, RefreshCw, 
@@ -468,6 +469,7 @@ function SuccessModal({ isOpen, onClose, imageUrl, productName }) {
 }
 
 export default function LandingGenPage() {
+  const navigate = useNavigate();
   const {
     products,
     projects,
@@ -484,6 +486,9 @@ export default function LandingGenPage() {
     createProject,
     updateProduct,
     generateSalesAngles,
+    createLanding,
+    selectLanding,
+    setSections,
     
     // Landing templates
     landingTemplates,
@@ -561,6 +566,67 @@ export default function LandingGenPage() {
       localStorage.setItem('landing_image_group_mapping', JSON.stringify(updated));
       return updated;
     });
+  };
+
+  const [isCreatingLanding, setIsCreatingLanding] = useState(false);
+  const handleCreateLandingFromAngle = async (angleTitle, images) => {
+    if (!images || images.length === 0) {
+      alert('Por favor arrastra al menos una imagen a este ángulo de ventas antes de crear la Landing Page.');
+      return;
+    }
+
+    setIsCreatingLanding(true);
+    try {
+      const productSlug = selectedProductForGen.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      const angleSlug = angleTitle
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      const slug = `landing-${productSlug}-${angleSlug}-${Date.now().toString().slice(-4)}`;
+      const title = `Landing - ${selectedProductForGen.name} (${angleTitle})`;
+
+      const createdLanding = await createLanding(selectedProject.id, title, slug);
+      if (createdLanding) {
+        await selectLanding(createdLanding);
+
+        // Update default sections with the images of this sales angle
+        const currentSections = [...useStore.getState().sections];
+
+        // 1. Update cover image of hero section with the first image
+        const heroIdx = currentSections.findIndex(s => s.type === 'hero');
+        if (heroIdx !== -1) {
+          currentSections[heroIdx] = {
+            ...currentSections[heroIdx],
+            content_json: {
+              ...currentSections[heroIdx].content_json,
+              coverImage: images[0].image_url
+            }
+          };
+        }
+
+        // 2. Append a gallery section with all images of the sales angle
+        const gallerySection = {
+          type: 'gallery',
+          position: currentSections.length,
+          content_json: {
+            title: `Galería - ${angleTitle}`,
+            images: images.map(img => img.image_url)
+          }
+        };
+        currentSections.push(gallerySection);
+
+        setSections(currentSections);
+        navigate('/builder');
+      }
+    } catch (err) {
+      console.error('Error creating landing from sales angle:', err);
+      alert('Ocurrió un error al intentar crear la Landing Page.');
+    } finally {
+      setIsCreatingLanding(false);
+    }
   };
 
   // Product Creation Modal State
@@ -2276,7 +2342,22 @@ export default function LandingGenPage() {
                           {groupedBanners[angleTitle].length} {groupedBanners[angleTitle].length === 1 ? 'bloque' : 'bloques'}
                         </span>
                       </div>
-                      <span className="text-[9px] text-slate-500 font-semibold italic lowercase normal-case tracking-normal">Arrastra imágenes aquí para asociar</span>
+                      <div className="flex items-center gap-3">
+                        {groupedBanners[angleTitle].length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleCreateLandingFromAngle(angleTitle, groupedBanners[angleTitle])}
+                            disabled={isCreatingLanding}
+                            className="px-3 py-1.5 text-[10px] font-extrabold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 rounded-xl shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20 active:scale-95 transition-all duration-200 flex items-center gap-1.5 shrink-0 uppercase tracking-wider cursor-pointer border border-purple-500/30"
+                          >
+                            <Sparkles className="w-3 h-3.5 animate-pulse text-purple-200" />
+                            <span>{isCreatingLanding ? 'Creando...' : 'Crear Landing'}</span>
+                          </button>
+                        )}
+                        <span className="text-[9px] text-slate-500 font-semibold italic normal-case tracking-normal hidden sm:inline">
+                          Arrastra imágenes aquí para asociar
+                        </span>
+                      </div>
                     </h4>
                     
                     {groupedBanners[angleTitle].length === 0 ? (
