@@ -590,10 +590,9 @@ export default function LandingGenPage() {
 
       const createdLanding = await createLanding(selectedProject.id, title, slug);
       if (createdLanding) {
-        await selectLanding(createdLanding);
-
-        // Update default sections with the images of this sales angle
-        const currentSections = [...useStore.getState().sections];
+        // Use the seeded sections directly returned from the API creation response
+        const seededSections = createdLanding.sections || [];
+        const currentSections = [...seededSections];
 
         // 1. Update cover image of hero section with the first image
         const heroIdx = currentSections.findIndex(s => s.type === 'hero');
@@ -618,7 +617,17 @@ export default function LandingGenPage() {
         };
         currentSections.push(gallerySection);
 
-        setSections(currentSections);
+        // Set the active landing and sections in the store synchronously
+        useStore.setState({
+          selectedLanding: createdLanding,
+          sections: currentSections,
+          activeSectionIdx: null,
+          saveStatus: 'idle'
+        });
+
+        // Trigger immediate save in the database
+        await setSections(currentSections);
+
         navigate('/builder');
       }
     } catch (err) {

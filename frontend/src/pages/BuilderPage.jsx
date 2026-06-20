@@ -294,11 +294,18 @@ export default function BuilderPage() {
                   >
                     {/* Render visual layouts based on type */}
                     {sec.type === 'hero' && (
-                      <div class="py-16 px-6 text-center relative overflow-hidden bg-slate-900/40">
-                        <div class="max-w-xl mx-auto space-y-4">
-                          <h1 class="text-3xl font-extrabold text-white">{sec.content_json.title || 'Título'}</h1>
-                          <p class="text-sm text-slate-400">{sec.content_json.subtitle || 'Subtítulo'}</p>
-                          <button class="px-5 py-2.5 rounded-xl bg-purple-600 text-xs font-bold text-white mt-4 inline-block">
+                      <div 
+                        class="py-24 px-6 text-center relative overflow-hidden bg-slate-900/60 flex flex-col items-center justify-center min-h-[320px]"
+                        style={{
+                          backgroundImage: sec.content_json.coverImage ? `linear-gradient(to bottom, rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.85)), url(${sec.content_json.coverImage})` : 'none',
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                        }}
+                      >
+                        <div class="max-w-xl mx-auto space-y-4 relative z-10">
+                          <h1 class="text-3xl font-extrabold text-white leading-tight">{sec.content_json.title || 'Título'}</h1>
+                          <p class="text-sm text-slate-300 max-w-md mx-auto">{sec.content_json.subtitle || 'Subtítulo'}</p>
+                          <button class="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-bold text-white mt-4 shadow-lg shadow-purple-600/20 inline-block">
                             {sec.content_json.ctaText || 'Comprar'}
                           </button>
                         </div>
@@ -440,6 +447,37 @@ export default function BuilderPage() {
                       onChange={e => updateSectionContent(activeSectionIdx, { ctaLink: e.target.value })}
                     />
                   </div>
+                  <div class="flex flex-col gap-1.5 pt-2 border-t border-white/5">
+                    <label class="text-xs text-slate-400 font-semibold flex items-center justify-between">
+                      <span>Imagen de Fondo (Hero)</span>
+                      {sections[activeSectionIdx].content_json.coverImage && (
+                        <button
+                          type="button"
+                          onClick={() => updateSectionContent(activeSectionIdx, { coverImage: '' })}
+                          className="text-[10px] text-red-400 hover:text-red-300 font-bold"
+                        >
+                          Eliminar
+                        </button>
+                      )}
+                    </label>
+                    <div 
+                      onClick={() => openImagePicker(activeSectionIdx)}
+                      class="p-3 bg-white/[0.01] border border-white/5 rounded-xl flex items-center justify-between hover:bg-white/5 cursor-pointer transition-all"
+                    >
+                      <span class="text-xs text-slate-500">Seleccionar Imagen</span>
+                      {sections[activeSectionIdx].content_json.coverImage ? (
+                        <img 
+                          src={sections[activeSectionIdx].content_json.coverImage} 
+                          alt="Hero Cover" 
+                          class="w-10 h-10 object-cover rounded-lg border border-white/10" 
+                        />
+                      ) : (
+                        <div class="w-10 h-10 rounded-lg bg-white/5 border border-dashed border-white/10 flex items-center justify-center text-slate-600">
+                          +
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -547,26 +585,49 @@ export default function BuilderPage() {
                   <div class="space-y-3 border-t border-white/5 pt-3">
                     <span class="text-xs font-semibold text-slate-400">Imágenes (Click para cambiar)</span>
                     
-                    {/* Render slots for 3 images */}
-                    {[0, 1, 2].map((idx) => {
-                      const img = (sections[activeSectionIdx].content_json.images || [])[idx];
-                      return (
-                        <div 
-                          key={idx}
-                          onClick={() => openImagePicker(activeSectionIdx, idx)}
-                          class="p-3 bg-white/[0.01] border border-white/5 rounded-xl flex items-center justify-between hover:bg-white/5 cursor-pointer transition-all"
-                        >
+                    {/* Render slots dynamically based on the current images array */}
+                    {(sections[activeSectionIdx].content_json.images || []).map((img, idx) => (
+                      <div 
+                        key={idx}
+                        onClick={() => openImagePicker(activeSectionIdx, idx)}
+                        class="p-3 bg-white/[0.01] border border-white/5 rounded-xl flex items-center justify-between hover:bg-white/5 cursor-pointer transition-all"
+                      >
+                        <div class="flex items-center gap-2">
                           <span class="text-xs text-slate-400">Imagen {idx + 1}</span>
-                          {img ? (
-                            <img src={img} alt="Thumb" class="w-10 h-10 object-cover rounded-lg border border-white/10" />
-                          ) : (
-                            <div class="w-10 h-10 rounded-lg bg-white/5 border border-dashed border-white/10 flex items-center justify-center text-slate-600">
-                              +
-                            </div>
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const list = [...(sections[activeSectionIdx].content_json.images || [])];
+                              list.splice(idx, 1);
+                              updateSectionContent(activeSectionIdx, { images: list });
+                            }}
+                            className="text-[10px] text-red-500 hover:text-red-400 font-bold ml-2"
+                          >
+                            Eliminar
+                          </button>
                         </div>
-                      );
-                    })}
+                        {img ? (
+                          <img src={img} alt="Thumb" class="w-10 h-10 object-cover rounded-lg border border-white/10" />
+                        ) : (
+                          <div class="w-10 h-10 rounded-lg bg-white/5 border border-dashed border-white/10 flex items-center justify-center text-slate-600">
+                            +
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const list = [...(sections[activeSectionIdx].content_json.images || [])];
+                        list.push('');
+                        updateSectionContent(activeSectionIdx, { images: list });
+                      }}
+                      className="w-full py-2.5 rounded-xl border border-dashed border-white/10 hover:border-white/20 text-xs font-semibold text-slate-400 hover:text-white transition-all bg-white/[0.005] hover:bg-white/[0.01] mt-2"
+                    >
+                      + Añadir Imagen a la Galería
+                    </button>
                   </div>
                 </div>
               )}
