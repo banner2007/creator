@@ -221,7 +221,7 @@ function mimeToExt(mimeType) {
  * productImageSources: array of image URLs / data URLs / base64 strings of the REAL product.
  * referenceImageSource: optional sample ad image, used only as style reference.
  */
-async function generateOpenAIImage(prompt, ratio, productImageSources = [], referenceImageSource = null) {
+async function generateOpenAIImage(prompt, ratio, productImageSources = [], referenceImageSource = null, calidad = 'medio') {
   if (!OPENAI_API_KEY || OPENAI_API_KEY.includes('your-')) {
     throw new Error('OpenAI API Key is missing or invalid in server config.');
   }
@@ -241,7 +241,7 @@ async function generateOpenAIImage(prompt, ratio, productImageSources = [], refe
     form.append('prompt', prompt);
     form.append('size', size);
     form.append('n', '1');
-    form.append('quality', 'high');
+    form.append('quality', calidad === 'alto' ? 'high' : 'standard');
 
     // IMPORTANTE: la(s) imagen(es) del producto real van PRIMERO y son las que
     // el modelo trata como el objeto a preservar. Hasta 16 imágenes soportadas.
@@ -318,7 +318,7 @@ function getFallbackImage(product, style, ratio) {
 /**
  * Download image from URL or parse base64 and upload to Supabase Storage
  */
-async function uploadToSupabase(imageUrl, projectId) {
+async function uploadToSupabase(imageUrl, projectId, quality = 'medio') {
   try {
     if (!imageUrl) throw new Error('No image content to upload');
     
@@ -341,6 +341,37 @@ async function uploadToSupabase(imageUrl, projectId) {
         // Raw base64 string
         buffer = Buffer.from(imageUrl, 'base64');
       }
+    }
+
+    // Compress and optimize image using Jimp
+    try {
+      const Jimp = (await import('jimp')).default;
+      console.log(`[Storage] Compressing image with Jimp. Quality option: ${quality}`);
+      const image = await Jimp.read(buffer);
+      
+      let targetQuality = 75; // default for 'medio'
+      if (quality === 'bajo') {
+        targetQuality = 50;
+      } else if (quality === 'alto') {
+        targetQuality = 85;
+      }
+
+      // Limit max width to 1400px for optimal loading performance on web pages
+      if (image.getWidth() > 1400) {
+        console.log(`[Storage] Resizing image from ${image.getWidth()}px to 1400px width`);
+        image.resize(1400, Jimp.AUTO);
+      }
+
+      // Convert and compress to JPEG format
+      const compressedBuffer = await image.quality(targetQuality).getBufferAsync(Jimp.MIME_JPEG);
+      
+      if (compressedBuffer.length < buffer.length) {
+        console.log(`[Storage] Compressed successfully: from ${buffer.length} to ${compressedBuffer.length} bytes`);
+        buffer = compressedBuffer;
+        contentType = 'image/jpeg';
+      }
+    } catch (jimpError) {
+      console.warn('[Storage] Jimp image compression failed or not available, uploading raw buffer:', jimpError.message);
     }
 
     const ext = contentType.split('/')[1] || 'webp';
@@ -512,7 +543,7 @@ Reference composition similarity: 90%.
           const { code, data, msg } = response.data;
           if (code === 200 && data?.taskId) {
             const rawUrl = await pollKieTask(data.taskId, KIE_API_KEY);
-            finalUrl = await uploadToSupabase(rawUrl, validated.projectId);
+            finalUrl = await uploadToSupabase(rawUrl, validated.projectId, validated.calidad);
             modelsUsed.push('flux-kontext-pro');
           } else {
             console.error(`[AI Gen] Kie.ai task submission failed: ${msg}`);
@@ -593,9 +624,10 @@ Professional advertising banner. Theme: ${validated.estilo}. Photorealistic, com
             dallePrompt,
             validated.formato,
             productImages,
-            validated.referenceImage || null
+            validated.referenceImage || null,
+            validated.calidad
           );
-          finalUrl = await uploadToSupabase(url, validated.projectId);
+          finalUrl = await uploadToSupabase(url, validated.projectId, validated.calidad);
           modelsUsed.push(model);
         } catch (err) {
           const detail = err.response?.data?.error?.message || err.message;
