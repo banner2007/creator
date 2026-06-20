@@ -544,6 +544,25 @@ export default function LandingGenPage() {
   const [showTutorialModal, setShowTutorialModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  // Drag and drop states for grouping images by sales angles
+  const [imageGroupMapping, setImageGroupMapping] = useState(() => {
+    try {
+      const saved = localStorage.getItem('landing_image_group_mapping');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [draggedOverGroup, setDraggedOverGroup] = useState(null);
+
+  const handleMoveImageToGroup = (imgId, groupName) => {
+    setImageGroupMapping(prev => {
+      const updated = { ...prev, [imgId]: groupName };
+      localStorage.setItem('landing_image_group_mapping', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   // Product Creation Modal State
   const [newProdName, setNewProdName] = useState('');
   const [newProdPrice, setNewProdPrice] = useState('');
@@ -847,6 +866,26 @@ export default function LandingGenPage() {
       setSuccessImages(results);
       setShowSuccessModal(true);
       fetchProjectImages(selectedProject.id);
+
+      // Auto-associate the new image with the first checked angle if any
+      const activeAngleTitles = Object.keys(selectedAngles)
+        .filter(idx => selectedAngles[idx])
+        .map(idx => salesAngles[idx]?.titulo)
+        .filter(Boolean);
+        
+      if (activeAngleTitles.length > 0) {
+        const firstAngle = activeAngleTitles[0];
+        setImageGroupMapping(prev => {
+          const updated = { ...prev };
+          results.forEach(img => {
+            if (img.id) {
+              updated[img.id] = firstAngle;
+            }
+          });
+          localStorage.setItem('landing_image_group_mapping', JSON.stringify(updated));
+          return updated;
+        });
+      }
     }
   };
 
@@ -2018,7 +2057,12 @@ export default function LandingGenPage() {
           const renderBannerCard = (img) => (
             <div 
               key={img.id} 
-              className="glass-panel border border-white/10 rounded-2xl overflow-hidden bg-slate-950 group relative aspect-square shadow-md hover:scale-[1.01] transition-transform duration-300"
+              draggable={true}
+              onDragStart={(e) => {
+                e.dataTransfer.setData('text/plain', img.id);
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              className="glass-panel border border-white/10 rounded-2xl overflow-hidden bg-slate-950 group relative aspect-square shadow-md hover:scale-[1.01] transition-transform duration-300 cursor-grab active:cursor-grabbing"
             >
               <img src={img.image_url} alt="Generated landing block" className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" />
               
@@ -2071,55 +2115,139 @@ export default function LandingGenPage() {
           const groupedBanners = {};
           const ungroupedBanners = [];
 
+          // Initialize buckets for all angles
+          anglesList.forEach(title => {
+            groupedBanners[title] = [];
+          });
+
           productBanners.forEach(img => {
-            let matched = false;
-            anglesList.forEach(angleTitle => {
-              if (img.prompt && img.prompt.toLowerCase().includes(angleTitle.toLowerCase())) {
-                if (!groupedBanners[angleTitle]) {
-                  groupedBanners[angleTitle] = [];
-                }
-                groupedBanners[angleTitle].push(img);
-                matched = true;
+            const manualGroup = imageGroupMapping[img.id];
+            if (manualGroup !== undefined) {
+              if (manualGroup && anglesList.includes(manualGroup)) {
+                groupedBanners[manualGroup].push(img);
+              } else {
+                ungroupedBanners.push(img);
               }
-            });
-            if (!matched) {
-              ungroupedBanners.push(img);
+            } else {
+              let matched = false;
+              anglesList.forEach(angleTitle => {
+                if (img.prompt && img.prompt.toLowerCase().includes(angleTitle.toLowerCase())) {
+                  groupedBanners[angleTitle].push(img);
+                  matched = true;
+                }
+              });
+              if (!matched) {
+                ungroupedBanners.push(img);
+              }
             }
           });
 
           return (
             <div className="space-y-8">
               {/* Grouped by Angle */}
-              {Object.keys(groupedBanners).map(angleTitle => (
-                <div key={angleTitle} className="space-y-4">
-                  <h4 className="text-xs font-extrabold text-purple-400 border-b border-purple-500/10 pb-1.5 flex items-center gap-2 uppercase tracking-wider">
-                    <BrainCircuit className="w-4 h-4 text-purple-400" />
-                    <span>Ángulo: {angleTitle}</span>
-                    <span className="px-2 py-0.5 text-[9px] bg-purple-500/10 text-purple-300 border border-purple-500/20 rounded-full font-extrabold">
-                      {groupedBanners[angleTitle].length} {groupedBanners[angleTitle].length === 1 ? 'bloque' : 'bloques'}
-                    </span>
-                  </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-                    {groupedBanners[angleTitle].map(img => renderBannerCard(img))}
+              {Object.keys(groupedBanners).map(angleTitle => {
+                const isHovered = draggedOverGroup === angleTitle;
+                return (
+                  <div 
+                    key={angleTitle} 
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      if (draggedOverGroup !== angleTitle) {
+                        setDraggedOverGroup(angleTitle);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      setDraggedOverGroup(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDraggedOverGroup(null);
+                      const imgId = e.dataTransfer.getData('text/plain');
+                      if (imgId) {
+                        handleMoveImageToGroup(imgId, angleTitle);
+                      }
+                    }}
+                    className={`space-y-4 p-4 rounded-3xl border transition-all duration-300 ${
+                      isHovered 
+                        ? 'border-purple-500 bg-purple-500/5 shadow-lg shadow-purple-500/5 scale-[1.002]' 
+                        : 'border-white/5 bg-slate-950/20'
+                    }`}
+                  >
+                    <h4 className="text-xs font-extrabold text-purple-400 border-b border-purple-500/10 pb-1.5 flex items-center justify-between uppercase tracking-wider">
+                      <div className="flex items-center gap-2">
+                        <BrainCircuit className="w-4 h-4 text-purple-400" />
+                        <span>Ángulo: {angleTitle}</span>
+                        <span className="px-2 py-0.5 text-[9px] bg-purple-500/10 text-purple-300 border border-purple-500/20 rounded-full font-extrabold">
+                          {groupedBanners[angleTitle].length} {groupedBanners[angleTitle].length === 1 ? 'bloque' : 'bloques'}
+                        </span>
+                      </div>
+                      <span className="text-[9px] text-slate-500 font-semibold italic lowercase normal-case tracking-normal">Arrastra imágenes aquí para asociar</span>
+                    </h4>
+                    
+                    {groupedBanners[angleTitle].length === 0 ? (
+                      <div className="border-2 border-dashed border-white/5 rounded-2xl p-6 text-center text-xs text-slate-500 italic bg-white/[0.005]">
+                        Arrastra imágenes aquí para asignarlas a este ángulo
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                        {groupedBanners[angleTitle].map(img => renderBannerCard(img))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Ungrouped / General */}
-              {ungroupedBanners.length > 0 && (
-                <div className="space-y-4">
-                  <h4 className="text-xs font-extrabold text-slate-400 border-b border-white/5 pb-1.5 flex items-center gap-2 uppercase tracking-wider">
-                    <FileImage className="w-4 h-4 text-slate-400" />
-                    <span>Otras Generaciones / Sin ángulo específico</span>
-                    <span className="px-2 py-0.5 text-[9px] bg-white/5 text-slate-400 border border-white/10 rounded-full font-extrabold">
-                      {ungroupedBanners.length} {ungroupedBanners.length === 1 ? 'bloque' : 'bloques'}
-                    </span>
-                  </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-                    {ungroupedBanners.map(img => renderBannerCard(img))}
+              {(() => {
+                const isHovered = draggedOverGroup === 'ungrouped';
+                return (
+                  <div 
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      if (draggedOverGroup !== 'ungrouped') {
+                        setDraggedOverGroup('ungrouped');
+                      }
+                    }}
+                    onDragLeave={() => {
+                      setDraggedOverGroup(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDraggedOverGroup(null);
+                      const imgId = e.dataTransfer.getData('text/plain');
+                      if (imgId) {
+                        handleMoveImageToGroup(imgId, '');
+                      }
+                    }}
+                    className={`space-y-4 p-4 rounded-3xl border transition-all duration-300 ${
+                      isHovered 
+                        ? 'border-purple-500 bg-purple-500/5 shadow-lg shadow-purple-500/5 scale-[1.002]' 
+                        : 'border-white/5 bg-slate-950/20'
+                    }`}
+                  >
+                    <h4 className="text-xs font-extrabold text-slate-400 border-b border-white/5 pb-1.5 flex items-center justify-between uppercase tracking-wider">
+                      <div className="flex items-center gap-2">
+                        <FileImage className="w-4 h-4 text-slate-400" />
+                        <span>Otras Generaciones / Sin ángulo específico</span>
+                        <span className="px-2 py-0.5 text-[9px] bg-white/5 text-slate-400 border border-white/10 rounded-full font-extrabold">
+                          {ungroupedBanners.length} {ungroupedBanners.length === 1 ? 'bloque' : 'bloques'}
+                        </span>
+                      </div>
+                      <span className="text-[9px] text-slate-500 font-semibold italic lowercase normal-case tracking-normal">Arrastra imágenes aquí para desasociar</span>
+                    </h4>
+                    
+                    {ungroupedBanners.length === 0 ? (
+                      <div className="border-2 border-dashed border-white/5 rounded-2xl p-6 text-center text-xs text-slate-500 italic bg-white/[0.005]">
+                        No hay imágenes sin ángulo específico. ¡Arrastra aquí para remover su ángulo!
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                        {ungroupedBanners.map(img => renderBannerCard(img))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           );
         })()}
