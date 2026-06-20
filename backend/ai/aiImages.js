@@ -79,6 +79,9 @@ async function pollKieTask(taskId, apiKey, retries = 25, delayMs = 3000) {
 function cleanProductPrompt(rawPrompt) {
   if (!rawPrompt) return '';
   
+  // Clean product_id metadata tag if present
+  rawPrompt = rawPrompt.replace(/\[product_id:\s*[a-f0-9-]+\]/gi, '').trim();
+  
   if (!rawPrompt.toLowerCase().includes('product:')) {
     return rawPrompt.trim();
   }
@@ -241,7 +244,10 @@ async function generateOpenAIImage(prompt, ratio, productImageSources = [], refe
     form.append('prompt', prompt);
     form.append('size', size);
     form.append('n', '1');
-    form.append('quality', calidad === 'alto' ? 'high' : 'standard');
+    let apiQuality = 'medium';
+    if (calidad === 'bajo') apiQuality = 'low';
+    else if (calidad === 'alto') apiQuality = 'high';
+    form.append('quality', apiQuality);
 
     // IMPORTANTE: la(s) imagen(es) del producto real van PRIMERO y son las que
     // el modelo trata como el objeto a preservar. Hasta 16 imágenes soportadas.

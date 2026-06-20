@@ -853,6 +853,9 @@ export default function LandingGenPage() {
       promptText += anglesPromptPart;
     }
 
+    // Append metadata tag with product ID
+    promptText += ` [product_id: ${currentProduct.id}]`;
+
     // Find the first valid product image URL (uploaded or cover image)
     const placeholderUrl = 'images.unsplash.com/photo-1523275335684-37898b6baf30';
     const primaryProductImage = productImages.find(img => img && img.trim() !== '' && !img.includes(placeholderUrl)) || '';
@@ -1165,9 +1168,13 @@ export default function LandingGenPage() {
   const productBanners = selectedProductForGen 
     ? (selectedProductForGen.id === 'new'
       ? []
-      : generatedImages.filter(img => 
-          img.prompt && selectedProductForGen.name && img.prompt.toLowerCase().includes(selectedProductForGen.name.toLowerCase())
-        )
+      : generatedImages.filter(img => {
+          if (!img.prompt) return false;
+          const hasProductIdTag = img.prompt.includes(`[product_id: ${selectedProductForGen.id}]`);
+          if (hasProductIdTag) return true;
+          return selectedProductForGen.name && 
+            img.prompt.toLowerCase().includes(selectedProductForGen.name.toLowerCase());
+        })
       )
     : [];
 
@@ -1216,9 +1223,12 @@ export default function LandingGenPage() {
         {/* Products Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {products.map(product => {
-            const count = generatedImages.filter(img => 
-              img.prompt && product.name && img.prompt.toLowerCase().includes(product.name.toLowerCase())
-            ).length;
+            const count = generatedImages.filter(img => {
+              if (!img.prompt) return false;
+              const hasProductIdTag = img.prompt.includes(`[product_id: ${product.id}]`);
+              if (hasProductIdTag) return true;
+              return product.name && img.prompt.toLowerCase().includes(product.name.toLowerCase());
+            }).length;
             
             const countText = count > 0 
               ? `${count} Sección${count > 1 ? 'es' : ''}` 
