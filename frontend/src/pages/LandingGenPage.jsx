@@ -809,6 +809,19 @@ export default function LandingGenPage() {
       }
     }
 
+    // Incorporate selected sales angles directly into prompt
+    const selectedIndices = Object.keys(selectedAngles).filter(idx => selectedAngles[idx]);
+    if (selectedIndices.length > 0 && salesAngles.length > 0) {
+      let anglesPromptPart = ' Sales angles to incorporate:';
+      selectedIndices.forEach(idx => {
+        const angle = salesAngles[idx];
+        if (angle) {
+          anglesPromptPart += ` [Angle: ${angle.titulo} - ${angle.texto} (CTA: ${angle.cta})]`;
+        }
+      });
+      promptText += anglesPromptPart;
+    }
+
     // Find the first valid product image URL (uploaded or cover image)
     const placeholderUrl = 'images.unsplash.com/photo-1523275335684-37898b6baf30';
     const primaryProductImage = productImages.find(img => img && img.trim() !== '' && !img.includes(placeholderUrl)) || '';
@@ -1184,6 +1197,8 @@ export default function LandingGenPage() {
       </div>
     );
   }
+
+  const hasSelectedAngle = Object.keys(selectedAngles).some(key => selectedAngles[key] === true);
 
   // VIEW 2: Landing Generation Detail (rendered when a product is selected)
   return (
@@ -1958,9 +1973,17 @@ export default function LandingGenPage() {
 
         {/* Generate Button Area */}
         <div className="pt-6 border-t border-white/5 space-y-4 text-center">
+          {!hasSelectedAngle && (
+            <div className="pb-2">
+              <p className="text-[11px] text-amber-400/90 font-medium bg-amber-500/5 border border-amber-500/10 py-2 px-4 rounded-xl inline-block">
+                ⚠️ Por favor genera y selecciona al menos un ángulo de ventas con IA más arriba para habilitar la generación.
+              </p>
+            </div>
+          )}
+          
           <button 
             type="submit"
-            disabled={isGeneratingImages || (!selectedTemplate && !customImage)}
+            disabled={isGeneratingImages || (!selectedTemplate && !customImage) || !hasSelectedAngle}
             className="w-full py-4 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 text-sm font-extrabold text-white rounded-2xl shadow-lg hover:shadow-purple-500/10 transition-all transform active:scale-[0.99] disabled:opacity-30 disabled:hover:from-purple-700 flex items-center justify-center gap-2 group"
           >
             <Wand2 className="w-4 h-4 text-purple-200 group-hover:animate-pulse" />
