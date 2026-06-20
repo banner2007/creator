@@ -452,6 +452,29 @@ export const useStore = create((set, get) => ({
     return null;
   },
 
+  generateSalesAngles: async (productId, description, productLink) => {
+    set({ isResearching: true });
+    try {
+      const response = await fetch('/api/ai/research/generate-angles', {
+        method: 'POST',
+        headers: getHeaders(get().token),
+        body: JSON.stringify({ productId, description, productLink })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        get().updateUserCredits(data.creditsLeft);
+        return data.angles;
+      } else {
+        alert(data.error || 'Error al generar los ángulos de venta');
+      }
+    } catch (err) {
+      console.error('Error generating sales angles:', err);
+    } finally {
+      set({ isResearching: false });
+    }
+    return null;
+  },
+
   // Firebase Storage Template Actions
   fetchFirebaseTemplates: async () => {
     // If already loaded templates list, don't list again

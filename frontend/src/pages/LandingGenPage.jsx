@@ -5,7 +5,7 @@ import {
   FileImage, HelpCircle, Check, Search, Upload, Trash2, 
   ChevronLeft, ChevronRight, ArrowLeft, Plus, DollarSign, Folder,
   Play, X, Globe, Maximize2, FileText, CheckCircle2, Eye, Palette,
-  Users, Tag, Truck, Info
+  Users, Tag, Truck, Info, BrainCircuit
 } from 'lucide-react';
 import { storage, ref, uploadBytes, getDownloadURL } from '../utils/firebase.js';
 import { getProductDisplayImage, getProductImagesArray } from '../utils/productUtils.js';
@@ -478,6 +478,7 @@ export default function LandingGenPage() {
     createProduct,
     createProject,
     updateProduct,
+    generateSalesAngles,
     
     // Landing templates
     landingTemplates,
@@ -520,6 +521,13 @@ export default function LandingGenPage() {
   const [offerCurrency, setOfferCurrency] = useState('Estados Unidos — USD ($)');
 
   const [logisticsCountry, setLogisticsCountry] = useState('');
+
+  // AI Sales Angles states
+  const [productLink, setProductLink] = useState('');
+  const [salesAngles, setSalesAngles] = useState([]);
+  const [selectedAngles, setSelectedAngles] = useState({}); // e.g. { 0: true, 1: false, ... }
+  const [isGeneratingAngles, setIsGeneratingAngles] = useState(false);
+  const [isSavingAngles, setIsSavingAngles] = useState(false);
 
   // Pagination & Search State (inside template selection modal)
   const [searchQuery, setSearchQuery] = useState('');
@@ -737,6 +745,72 @@ export default function LandingGenPage() {
       setSuccessImages(results);
       setShowSuccessModal(true);
       fetchProjectImages(selectedProject.id);
+    }
+  };
+
+  const handleGenerateSalesAngles = async () => {
+    const description = selectedProductForGen.id === 'new' ? newProdDescription : (selectedProductForGen.description || '');
+    if (!description.trim() && !productLink.trim()) {
+      alert('Por favor ingresa una descripción para el producto o un link del producto.');
+      return;
+    }
+    
+    setIsGeneratingAngles(true);
+    try {
+      const angles = await generateSalesAngles(selectedProductForGen.id, description, productLink);
+      if (angles && angles.length > 0) {
+        setSalesAngles(angles);
+        // Select all by default
+        const initialSelected = {};
+        angles.forEach((_, idx) => {
+          initialSelected[idx] = true;
+        });
+        setSelectedAngles(initialSelected);
+      }
+    } catch (err) {
+      console.error('Error generating sales angles:', err);
+    } finally {
+      setIsGeneratingAngles(false);
+    }
+  };
+
+  const handleSaveSalesAngles = async () => {
+    const selectedIndices = Object.keys(selectedAngles).filter(idx => selectedAngles[idx]);
+    if (selectedIndices.length === 0) {
+      alert('Por favor selecciona al menos un ángulo de venta.');
+      return;
+    }
+    
+    setIsSavingAngles(true);
+    try {
+      // Build text snippet of selected angles
+      let anglesText = "\n\n🎯 Ángulos de venta ganadores:\n";
+      selectedIndices.forEach(idx => {
+        const angle = salesAngles[idx];
+        anglesText += `• **${angle.titulo}** (${angle.enfoque}): ${angle.texto} (CTA: ${angle.cta})\n`;
+      });
+      
+      const currentDesc = selectedProductForGen.id === 'new' ? newProdDescription : (selectedProductForGen.description || '');
+      const updatedDesc = currentDesc + anglesText;
+      
+      if (selectedProductForGen.id === 'new') {
+        setNewProdDescription(updatedDesc);
+        alert('Ángulos de venta agregados temporalmente a la descripción del producto. Se guardarán al registrar el producto.');
+      } else {
+        const result = await updateProduct(selectedProductForGen.id, { description: updatedDesc });
+        if (result) {
+          setSelectedProductForGen(prev => ({
+            ...prev,
+            description: updatedDesc
+          }));
+          alert('Ángulos de venta guardados con éxito en la descripción del producto.');
+        }
+      }
+    } catch (err) {
+      console.error('Error saving sales angles:', err);
+      alert('Error al guardar los ángulos de venta.');
+    } finally {
+      setIsSavingAngles(false);
     }
   };
 
@@ -1151,6 +1225,119 @@ export default function LandingGenPage() {
             </div>
           </div>
         )}
+
+        {/* Sección: Generar Ángulos de Ventas con AI */}
+        <div className="p-5 rounded-2xl bg-purple-950/10 border border-purple-500/10 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-slate-200 font-extrabold text-[11px] uppercase tracking-wider">
+              <BrainCircuit className="w-4 h-4 text-purple-400" />
+              <span>Generar Ángulo de Ventas con AI</span>
+            </div>
+            <span className="text-[10px] text-slate-500 font-semibold tracking-wider">(Opcional)</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-slate-400">Link del Producto (Opcional)</label>
+              <input 
+                type="text" 
+                placeholder="https://ejemplo.com/producto" 
+                className="glass-input bg-slate-950/60"
+                value={productLink}
+                onChange={e => setProductLink(e.target.value)}
+              />
+            </div>
+
+            {selectedProductForGen.id !== 'new' && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-400">Descripción del Producto (para el análisis)</label>
+                <textarea 
+                  rows="2"
+                  placeholder="Descripción del producto..." 
+                  className="glass-input bg-slate-950/60 resize-none text-xs"
+                  value={selectedProductForGen.description || ''}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setSelectedProductForGen(prev => ({ ...prev, description: val }));
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between items-center gap-4 pt-2">
+            <button
+              type="button"
+              onClick={handleGenerateSalesAngles}
+              disabled={isGeneratingAngles || (!productLink.trim() && !(selectedProductForGen.id === 'new' ? newProdDescription : (selectedProductForGen.description || '')).trim())}
+              className="px-4 py-2.5 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 disabled:opacity-40 text-white text-xs font-bold rounded-2xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+            >
+              {isGeneratingAngles ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Generando ángulos...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-purple-300 animate-pulse" />
+                  <span>Generar Ángulo de Ventas con AI (1 crédito)</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Render generated angles if available */}
+          {salesAngles.length > 0 && (
+            <div className="pt-4 border-t border-white/5 space-y-4">
+              <h4 className="text-xs font-bold text-slate-300">Selecciona los ángulos preferidos:</h4>
+              <div className="space-y-3">
+                {salesAngles.map((angle, idx) => (
+                  <div key={idx} className="flex items-start gap-3 p-3 rounded-xl bg-slate-950/40 border border-white/5 hover:border-white/10 transition-all">
+                    <input 
+                      type="checkbox"
+                      id={`angle-check-${idx}`}
+                      checked={!!selectedAngles[idx]}
+                      onChange={e => {
+                        const checked = e.target.checked;
+                        setSelectedAngles(prev => ({ ...prev, [idx]: checked }));
+                      }}
+                      className="mt-1 w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-white/10 bg-slate-900 cursor-pointer"
+                    />
+                    <label htmlFor={`angle-check-${idx}`} className="flex-1 text-xs cursor-pointer select-none space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="font-extrabold text-purple-400">Ángulo {idx + 1}: {angle.titulo}</span>
+                        <span className="px-1.5 py-0.5 text-[9px] bg-purple-950/50 text-purple-300 border border-purple-500/10 rounded uppercase font-bold tracking-wider">{angle.enfoque}</span>
+                      </div>
+                      <p className="text-slate-300 leading-relaxed">{angle.texto}</p>
+                      {angle.cta && <div className="text-[10px] text-slate-500 font-bold">CTA Sugerido: <span className="text-slate-400">"{angle.cta}"</span></div>}
+                    </label>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleSaveSalesAngles}
+                  disabled={isSavingAngles || Object.keys(selectedAngles).filter(k => selectedAngles[k]).length === 0}
+                  className="px-4 py-2.5 bg-gradient-to-r from-indigo-700 to-purple-700 hover:from-indigo-600 hover:to-purple-600 disabled:opacity-40 text-white text-xs font-bold rounded-2xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isSavingAngles ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Guardando en el producto...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-indigo-300" />
+                      <span>Guardar Ángulos Seleccionados en la Descripción</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Double Panel Grid (Referencia & Foto del Producto) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

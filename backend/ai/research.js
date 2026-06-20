@@ -266,4 +266,87 @@ Por favor genera un perfil estructurado en Markdown que incluya los siguientes a
   }
 });
 
+/**
+ * @route   POST /api/ai/research/generate-angles
+ * @desc    Generate exactly 5 high-converting sales angles for the product from description or product link
+ */
+router.post('/generate-angles', requireAuth, async (req, res) => {
+  try {
+    const { productId, description, productLink } = req.body;
+    const userId = req.user.id;
+
+    // Deduct credit
+    const remainingCredits = await deductCredit(userId);
+
+    let productInfoText = "";
+    if (productId && productId !== 'new') {
+      const { data: product } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', productId)
+        .eq('user_id', userId)
+        .single();
+      if (product) {
+        productInfoText += `Nombre del producto: ${product.name}\nDescripción del producto: ${product.description || ''}\nPrecio del producto: $${product.price}\n`;
+      }
+    }
+
+    if (description) {
+      productInfoText += `Descripción adicional/general: ${description}\n`;
+    }
+
+    if (productLink) {
+      productInfoText += `Enlace del producto: ${productLink}\n`;
+      try {
+        const urlResponse = await axios.get(productLink, { timeout: 5000, headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const html = urlResponse.data;
+        const titleMatch = html.match(/<title>(.*?)<\/title>/i);
+        const title = titleMatch ? titleMatch[1] : '';
+        const metaMatch = html.match(/<meta\s+name=["']description["']\s+content=["'](.*?)["']/i);
+        const metaDesc = metaMatch ? metaMatch[1] : '';
+        productInfoText += `(Información extraída del enlace - Título: ${title}. Descripción Meta: ${metaDesc})\n`;
+      } catch (urlErr) {
+        console.error('Error fetching product link:', urlErr.message);
+      }
+    }
+
+    const prompt = `Genera exactamente 5 ángulos de venta de alta conversión para el siguiente producto en formato JSON:
+${productInfoText}
+
+Por favor, devuelve un objeto JSON con la clave "angles" que contenga un arreglo de exactamente 5 objetos. Cada objeto del arreglo debe tener los siguientes campos en español:
+1. "titulo": El titular persuasivo (Hook) corto del ángulo.
+2. "enfoque": El enfoque o beneficio principal (ej. Ahorro de tiempo, comodidad, calidad premium).
+3. "texto": El copy persuasivo o texto corto de 2-3 líneas para Facebook/Instagram/Landing.
+4. "cta": El texto sugerido para el botón de llamado a la acción.
+
+Responde únicamente con el objeto JSON válido. No incluyas explicaciones ni bloques de código markdown.`;
+
+    const rawResponse = await callOpenAI(prompt);
+    
+    let jsonResponse;
+    try {
+      const cleanJson = rawResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+      jsonResponse = JSON.parse(cleanJson);
+    } catch (e) {
+      console.error('Error parsing JSON from OpenAI:', rawResponse);
+      throw new Error('La respuesta de la IA no pudo ser analizada como un JSON válido.');
+    }
+
+    await supabase.from('audit_logs').insert({
+      user_id: userId,
+      action: 'ai_research_generate_angles',
+      metadata: { productId, productLink }
+    });
+
+    return res.json({
+      success: true,
+      angles: jsonResponse.angles || [],
+      creditsLeft: remainingCredits
+    });
+  } catch (err) {
+    console.error('Generate sales angles error:', err);
+    return res.status(500).json({ error: err.message || 'Error executing sales angles generation.' });
+  }
+});
+
 export default router;
