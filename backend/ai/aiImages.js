@@ -727,4 +727,61 @@ router.post('/upscale', requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * @route   DELETE /api/ai/image/:id
+ * @desc    Delete an AI generated image
+ */
+router.delete('/image/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Verify the image belongs to a project owned by the user
+    const { data: image, error: imgError } = await supabase
+      .from('ai_images')
+      .select('id, project_id, image_url')
+      .eq('id', id)
+      .single();
+
+    if (imgError || !image) {
+      return res.status(404).json({ error: 'Image not found.' });
+    }
+
+    const { data: project, error: projError } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('id', image.project_id)
+      .eq('user_id', userId)
+      .single();
+
+    if (projError || !project) {
+      return res.status(403).json({ error: 'Access denied.' });
+    }
+
+    // Delete from Supabase Database
+    const { error: deleteError } = await supabase
+      .from('ai_images')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    // Delete from Supabase Storage bucket if it was uploaded there
+    if (image.image_url.includes('generated-images')) {
+      const parts = image.image_url.split('/generated-images/');
+      if (parts.length > 1) {
+        const filename = parts[1];
+        await supabase.storage.from('generated-images').remove([filename]);
+      }
+    }
+
+    return res.json({ success: true, message: 'Image deleted successfully.' });
+  } catch (err) {
+    console.error('Delete image error:', err);
+    return res.status(500).json({ error: err.message || 'Error deleting image.' });
+  }
+});
+
 export default router;

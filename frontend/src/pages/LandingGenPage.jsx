@@ -475,6 +475,7 @@ export default function LandingGenPage() {
     generateImages,
     generatedImages,
     fetchProjectImages,
+    deleteProjectImage,
     createProduct,
     createProject,
     updateProduct,
@@ -921,6 +922,37 @@ export default function LandingGenPage() {
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
+  };
+
+  // Helper to extract sales angles from description and active state
+  const getProductSalesAngles = () => {
+    const list = [];
+    
+    // 1. From current session generated angles
+    if (salesAngles && salesAngles.length > 0) {
+      salesAngles.forEach(a => {
+        if (a.titulo && !list.includes(a.titulo)) {
+          list.push(a.titulo.trim());
+        }
+      });
+    }
+    
+    // 2. From product description
+    if (selectedProductForGen && selectedProductForGen.description) {
+      const desc = selectedProductForGen.description;
+      const regex = /• \*\*(.*?)\*\*/g;
+      let match;
+      while ((match = regex.exec(desc)) !== null) {
+        if (match[1]) {
+          const title = match[1].trim();
+          if (!list.includes(title)) {
+            list.push(title);
+          }
+        }
+      }
+    }
+    
+    return list;
   };
 
   // Filter history blocks for selected product
@@ -1859,56 +1891,127 @@ export default function LandingGenPage() {
           Secciones de Landing del Proyecto
         </h3>
         
-        {productBanners.length === 0 ? (
-          <div className="glass-panel border border-white/5 rounded-3xl p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
-            <div className="w-16 h-16 rounded-2xl bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4 shadow-lg shadow-purple-500/5">
-              <FileImage className="w-8 h-8 stroke-1.5" />
-            </div>
-            <h4 className="font-bold text-lg text-slate-100 mb-1">Aún no hay bloques</h4>
-            <p className="text-xs text-slate-500 max-w-[280px]">Genera tu primer sección de landing page para ver los resultados aquí.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-            {productBanners.map(img => (
-              <div 
-                key={img.id} 
-                className="glass-panel border border-white/10 rounded-2xl overflow-hidden bg-slate-950 group relative aspect-square shadow-md hover:scale-[1.01] transition-transform duration-300"
-              >
-                <img src={img.image_url} alt="Generated landing block" className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" />
-                
-                {/* Image Details Hover Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-4 flex flex-col justify-between">
-                  <div className="flex justify-end">
-                    <span className="bg-purple-600 text-white text-[8px] px-2 py-0.5 rounded font-extrabold uppercase tracking-wide border border-purple-400">{img.model}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-white">
-                    <span className="text-[10px] truncate max-w-[120px] font-semibold">{img.prompt}</span>
-                    <div className="flex gap-1">
-                      <button 
-                        onClick={() => {
-                          setSuccessImages([img]);
-                          setShowSuccessModal(true);
-                        }}
-                        className="p-1.5 rounded bg-white/10 text-white hover:bg-white/20 transition-colors"
-                        title="Ver detalle"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
-                      <a 
-                        href={img.image_url} 
-                        download 
-                        className="p-1.5 rounded bg-white/10 text-white hover:bg-white/20 transition-colors"
-                        title="Descargar"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                      </a>
-                    </div>
+        {(() => {
+          if (productBanners.length === 0) {
+            return (
+              <div className="glass-panel border border-white/5 rounded-3xl p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
+                <div className="w-16 h-16 rounded-2xl bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4 shadow-lg shadow-purple-500/5">
+                  <FileImage className="w-8 h-8 stroke-1.5" />
+                </div>
+                <h4 className="font-bold text-lg text-slate-100 mb-1">Aún no hay bloques</h4>
+                <p className="text-xs text-slate-500 max-w-[280px]">Genera tu primer sección de landing page para ver los resultados aquí.</p>
+              </div>
+            );
+          }
+
+          const renderBannerCard = (img) => (
+            <div 
+              key={img.id} 
+              className="glass-panel border border-white/10 rounded-2xl overflow-hidden bg-slate-950 group relative aspect-square shadow-md hover:scale-[1.01] transition-transform duration-300"
+            >
+              <img src={img.image_url} alt="Generated landing block" className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" />
+              
+              {/* Image Details Hover Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-between">
+                <div className="flex justify-end">
+                  <span className="bg-purple-600 text-white text-[8px] px-2 py-0.5 rounded font-extrabold uppercase tracking-wide border border-purple-500/30">{img.model}</span>
+                </div>
+                <div className="flex justify-between items-center text-white gap-2">
+                  <span className="text-[9px] truncate flex-1 font-semibold text-slate-200" title={img.prompt}>{img.prompt}</span>
+                  <div className="flex gap-1 shrink-0">
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setSuccessImages([img]);
+                        setShowSuccessModal(true);
+                      }}
+                      className="p-1.5 rounded bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer"
+                      title="Ver detalle"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    <a 
+                      href={img.image_url} 
+                      download 
+                      className="p-1.5 rounded bg-white/10 text-white hover:bg-white/20 transition-colors flex items-center justify-center cursor-pointer"
+                      title="Descargar"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </a>
+                    <button 
+                      type="button"
+                      onClick={async () => {
+                        if (confirm('¿Estás seguro de que deseas eliminar esta sección de landing generada? Esta acción es irreversible.')) {
+                          await deleteProjectImage(img.id);
+                        }
+                      }}
+                      className="p-1.5 rounded bg-red-600/20 text-red-400 hover:bg-red-600/40 hover:text-white transition-colors cursor-pointer"
+                      title="Eliminar"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          );
+
+          const anglesList = getProductSalesAngles();
+          const groupedBanners = {};
+          const ungroupedBanners = [];
+
+          productBanners.forEach(img => {
+            let matched = false;
+            anglesList.forEach(angleTitle => {
+              if (img.prompt && img.prompt.toLowerCase().includes(angleTitle.toLowerCase())) {
+                if (!groupedBanners[angleTitle]) {
+                  groupedBanners[angleTitle] = [];
+                }
+                groupedBanners[angleTitle].push(img);
+                matched = true;
+              }
+            });
+            if (!matched) {
+              ungroupedBanners.push(img);
+            }
+          });
+
+          return (
+            <div className="space-y-8">
+              {/* Grouped by Angle */}
+              {Object.keys(groupedBanners).map(angleTitle => (
+                <div key={angleTitle} className="space-y-4">
+                  <h4 className="text-xs font-extrabold text-purple-400 border-b border-purple-500/10 pb-1.5 flex items-center gap-2 uppercase tracking-wider">
+                    <BrainCircuit className="w-4 h-4 text-purple-400" />
+                    <span>Ángulo: {angleTitle}</span>
+                    <span className="px-2 py-0.5 text-[9px] bg-purple-500/10 text-purple-300 border border-purple-500/20 rounded-full font-extrabold">
+                      {groupedBanners[angleTitle].length} {groupedBanners[angleTitle].length === 1 ? 'bloque' : 'bloques'}
+                    </span>
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                    {groupedBanners[angleTitle].map(img => renderBannerCard(img))}
+                  </div>
+                </div>
+              ))}
+
+              {/* Ungrouped / General */}
+              {ungroupedBanners.length > 0 && (
+                <div className="space-y-4">
+                  <h4 className="text-xs font-extrabold text-slate-400 border-b border-white/5 pb-1.5 flex items-center gap-2 uppercase tracking-wider">
+                    <FileImage className="w-4 h-4 text-slate-400" />
+                    <span>Otras Generaciones / Sin ángulo específico</span>
+                    <span className="px-2 py-0.5 text-[9px] bg-white/5 text-slate-400 border border-white/10 rounded-full font-extrabold">
+                      {ungroupedBanners.length} {ungroupedBanners.length === 1 ? 'bloque' : 'bloques'}
+                    </span>
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                    {ungroupedBanners.map(img => renderBannerCard(img))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Template Selection Modal */}

@@ -346,6 +346,27 @@ export const useStore = create((set, get) => ({
     }
   },
 
+  deleteProjectImage: async (id) => {
+    try {
+      const response = await fetch(`/api/ai/image/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders(get().token)
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        set(state => ({
+          generatedImages: state.generatedImages.filter(img => img.id !== id)
+        }));
+        return true;
+      } else {
+        alert(data.error || 'Error al eliminar la imagen');
+      }
+    } catch (err) {
+      console.error('Error deleting project image:', err);
+    }
+    return false;
+  },
+
   // Products CRUD Actions
   fetchProducts: async () => {
     try {
