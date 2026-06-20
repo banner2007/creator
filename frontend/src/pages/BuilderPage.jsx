@@ -3,7 +3,8 @@ import { useStore } from '../store/useStore.js';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowUp, ArrowDown, Trash2, Plus, Monitor, Tablet, Smartphone, 
-  Sparkles, Globe, CloudLightning, Eye, ArrowLeft, RefreshCw, CheckCircle, Image as ImageIcon 
+  Sparkles, Globe, CloudLightning, Eye, ArrowLeft, RefreshCw, CheckCircle, Image as ImageIcon,
+  Sliders
 } from 'lucide-react';
 
 export default function BuilderPage() {
