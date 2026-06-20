@@ -664,6 +664,9 @@ export default function LandingGenPage() {
           setProductLink(data.productLink || '');
           setCustomStyle(data.customStyle || '');
           setCustomStyleEnabled(!!data.customStyleEnabled);
+          setBgColor(data.bgColor || '#0f172a');
+          setSalesAngles(data.salesAngles || []);
+          setSelectedAngles(data.selectedAngles || {});
         } catch (e) {
           console.error("Error parsing saved personalization data:", e);
         }
@@ -683,6 +686,9 @@ export default function LandingGenPage() {
         setProductLink('');
         setCustomStyle('');
         setCustomStyleEnabled(false);
+        setBgColor('#0f172a');
+        setSalesAngles([]);
+        setSelectedAngles({});
       }
       lastLoadedProductIdRef.current = selectedProductForGen.id;
     }
@@ -705,7 +711,10 @@ export default function LandingGenPage() {
         logisticsCountry,
         productLink,
         customStyle,
-        customStyleEnabled
+        customStyleEnabled,
+        bgColor,
+        salesAngles,
+        selectedAngles
       };
       localStorage.setItem(`landing_personalization_${selectedProductForGen.id}`, JSON.stringify(data));
     }
@@ -724,7 +733,10 @@ export default function LandingGenPage() {
     logisticsCountry,
     productLink,
     customStyle,
-    customStyleEnabled
+    customStyleEnabled,
+    bgColor,
+    salesAngles,
+    selectedAngles
   ]);
   const handleGenerate = async (e) => {
     e.preventDefault();
@@ -952,6 +964,60 @@ export default function LandingGenPage() {
       alert('Error al guardar los ángulos de venta.');
     } finally {
       setIsSavingAngles(false);
+    }
+  };
+
+  const handleRegenerateUnselectedAngles = async () => {
+    const description = selectedProductForGen.id === 'new' ? newProdDescription : (selectedProductForGen.description || '');
+    if (!description.trim() && !productLink.trim()) {
+      alert('Por favor ingresa una descripción para el producto o un link del producto.');
+      return;
+    }
+    
+    setIsGeneratingAngles(true);
+    try {
+      const checkedAngles = [];
+      salesAngles.forEach((angle, idx) => {
+        if (selectedAngles[idx] === true) {
+          checkedAngles.push(angle);
+        }
+      });
+      
+      if (checkedAngles.length === 5) {
+        alert('Todos los ángulos están seleccionados. Desmarca los que quieras cambiar para poder regenerarlos.');
+        setIsGeneratingAngles(false);
+        return;
+      }
+      
+      const newAngles = await generateSalesAngles(selectedProductForGen.id, description, productLink);
+      
+      if (newAngles && newAngles.length > 0) {
+        let newAngleIndex = 0;
+        const mergedAngles = salesAngles.map((oldAngle, idx) => {
+          if (selectedAngles[idx] === true) {
+            return oldAngle;
+          } else {
+            const fresh = newAngles[newAngleIndex] || newAngles[newAngleIndex % newAngles.length];
+            newAngleIndex++;
+            return fresh;
+          }
+        });
+        
+        setSalesAngles(mergedAngles);
+        
+        const updatedSelected = {};
+        mergedAngles.forEach((_, idx) => {
+          updatedSelected[idx] = true;
+        });
+        setSelectedAngles(updatedSelected);
+        
+        alert('Los ángulos no seleccionados han sido regenerados con éxito.');
+      }
+    } catch (err) {
+      console.error('Error regenerating sales angles:', err);
+      alert('Error al regenerar los ángulos de venta.');
+    } finally {
+      setIsGeneratingAngles(false);
     }
   };
 
@@ -1489,7 +1555,7 @@ export default function LandingGenPage() {
                 ))}
               </div>
 
-              <div className="pt-2">
+              <div className="pt-2 flex flex-wrap gap-3">
                 <button
                   type="button"
                   onClick={handleSaveSalesAngles}
@@ -1505,6 +1571,25 @@ export default function LandingGenPage() {
                     <>
                       <Check className="w-3.5 h-3.5 text-indigo-300" />
                       <span>Guardar Ángulos Seleccionados en la Descripción</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleRegenerateUnselectedAngles}
+                  disabled={isGeneratingAngles || Object.keys(selectedAngles).filter(k => selectedAngles[k]).length === 5}
+                  className="px-4 py-2.5 bg-purple-950/20 border border-purple-500/30 hover:bg-purple-950/40 text-purple-300 disabled:opacity-40 text-white text-xs font-bold rounded-2xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isGeneratingAngles ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Regenerando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+                      <span>Regenerar Ángulos No Seleccionados (1 crédito)</span>
                     </>
                   )}
                 </button>
