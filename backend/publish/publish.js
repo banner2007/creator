@@ -23,29 +23,42 @@ function renderSection(section) {
   
   switch (section.type) {
     case 'hero':
+      // Support full-bleed image if there is coverImage and no title/subtitle
+      if (content.coverImage && !content.title && !content.subtitle) {
+        return `
+          <section class="relative bg-white overflow-hidden">
+            <img src="${content.coverImage}" alt="Hero Banner" class="w-full h-auto block" loading="eager" fetchpriority="high">
+          </section>
+        `;
+      }
+      
+      const bgStyle = content.coverImage 
+        ? `background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.95)), url(${content.coverImage}); background-size: cover; background-position: center;` 
+        : 'background-color: #ffffff;';
+      
       return `
-        <section class="relative min-h-[80vh] flex items-center justify-center overflow-hidden py-20 px-6 bg-slate-950 text-white">
-          <!-- Glassmorphism backdrop -->
-          <div class="absolute inset-0 z-0">
-            <div class="absolute -top-40 -left-40 w-96 h-96 bg-purple-600 rounded-full mix-blend-screen filter blur-[100px] opacity-30 animate-pulse"></div>
-            <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-blue-600 rounded-full mix-blend-screen filter blur-[100px] opacity-30 animate-pulse"></div>
-          </div>
-          
-          <div class="max-w-4xl mx-auto text-center z-10 relative">
-            <span class="px-3 py-1 text-xs font-semibold uppercase tracking-wider bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-purple-300">
-              Lanzamiento Oficial
-            </span>
-            <h1 class="mt-6 text-4xl sm:text-6xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-purple-400 bg-clip-text text-transparent leading-tight">
+        <section class="relative flex items-center justify-center overflow-hidden py-16 px-6 text-slate-900 border-b border-slate-100" style="${bgStyle}">
+          <div class="max-w-xl mx-auto text-center relative z-10">
+            ${content.badge ? `
+              <span class="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-full inline-block mb-4">
+                ${content.badge}
+              </span>
+            ` : ''}
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 leading-tight">
               ${content.title || 'Título del Producto'}
             </h1>
-            <p class="mt-6 text-lg sm:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
-              ${content.subtitle || 'Subtítulo o descripción atractiva del producto.'}
-            </p>
-            <div class="mt-10 flex flex-wrap justify-center gap-4">
-              <a href="${content.ctaLink || '#offer'}" class="px-8 py-4 text-base font-semibold rounded-xl bg-purple-600 hover:bg-purple-500 shadow-[0_0_20px_rgba(147,51,234,0.4)] transition-all duration-300 transform hover:-translate-y-0.5">
-                ${content.ctaText || 'Comprar Ahora'}
-              </a>
-            </div>
+            ${content.subtitle ? `
+              <p class="mt-4 text-sm sm:text-base text-slate-600 max-w-md mx-auto leading-relaxed">
+                ${content.subtitle}
+              </p>
+            ` : ''}
+            ${content.ctaText ? `
+              <div class="mt-6 flex justify-center">
+                <a href="${content.ctaLink || '#offer'}" class="px-8 py-3.5 text-sm font-extrabold rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/25 transition-all duration-300 transform hover:-translate-y-0.5 anim-shake">
+                  ${content.ctaText}
+                </a>
+              </div>
+            ` : ''}
           </div>
         </section>
       `;
@@ -53,24 +66,24 @@ function renderSection(section) {
     case 'benefits':
       const items = content.items || [];
       return `
-        <section class="py-24 px-6 bg-slate-900 text-white relative">
-          <div class="max-w-6xl mx-auto z-10 relative">
-            <div class="text-center max-w-2xl mx-auto mb-16">
-              <h2 class="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-                ${content.title || 'Beneficios Exclusivos'}
-              </h2>
-            </div>
+        <section class="py-12 px-6 bg-slate-50 text-slate-900 border-b border-slate-100">
+          <div class="max-w-xl mx-auto">
+            <h2 class="text-xl sm:text-2xl font-black text-center text-slate-900 mb-8">
+              ${content.title || 'Beneficios Exclusivos'}
+            </h2>
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="grid grid-cols-1 gap-4">
               ${items.map(item => `
-                <div class="p-8 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-lg hover:border-purple-500/50 hover:bg-white/[0.07] transition-all duration-300 group">
-                  <div class="w-12 h-12 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-6 group-hover:scale-110 transition-transform">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+                <div class="p-5 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-start gap-4">
+                  <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
                   </div>
-                  <h3 class="text-xl font-bold mb-3 text-slate-100">${item.title || 'Beneficio'}</h3>
-                  <p class="text-slate-400 leading-relaxed">${item.description || 'Detalle del beneficio.'}</p>
+                  <div>
+                    <h3 class="text-sm font-bold text-slate-900 mb-1">${item.title || 'Beneficio'}</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">${item.description || 'Detalle del beneficio.'}</p>
+                  </div>
                 </div>
               `).join('')}
             </div>
@@ -81,39 +94,40 @@ function renderSection(section) {
     case 'offer':
       const features = content.features || [];
       return `
-        <section id="offer" class="py-24 px-6 bg-slate-950 text-white relative">
-          <div class="max-w-4xl mx-auto z-10 relative">
-            <div class="p-8 sm:p-12 rounded-3xl bg-gradient-to-b from-white/10 to-white/5 border border-white/20 backdrop-blur-2xl shadow-2xl relative overflow-hidden">
-              <!-- Banner decorativo -->
+        <section id="offer" class="py-12 px-6 bg-white text-slate-800">
+          <div class="max-w-xl mx-auto">
+            <div class="p-6 sm:p-8 rounded-2xl bg-slate-50 border border-slate-100 shadow-xl relative overflow-hidden text-center">
               ${content.badge ? `
-                <div class="absolute top-6 right-6 bg-purple-600 text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider animate-bounce">
+                <div class="bg-emerald-500 text-white text-[10px] font-black px-3.5 py-1.5 rounded-full uppercase tracking-wider animate-pulse inline-block mb-4">
                   ${content.badge}
                 </div>
               ` : ''}
               
-              <h2 class="text-3xl sm:text-4xl font-bold mb-4">${content.title || '¡Oferta Limitada!'}</h2>
+              <h2 class="text-xl sm:text-2xl font-black text-slate-900 mb-2">${content.title || '¡Oferta Especial!'}</h2>
               
-              <div class="mt-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8 border-b border-white/10 pb-8">
+              <div class="mt-4 flex flex-col items-center gap-4 border-b border-slate-200/60 pb-6">
                 <div>
-                  <span class="text-slate-400 line-through text-lg">Antes $${content.originalPrice || '99.99'}</span>
-                  <div class="flex items-baseline mt-2">
-                    <span class="text-5xl font-extrabold text-white">$${content.price || '49.99'}</span>
-                    <span class="text-slate-400 ml-2">USD</span>
+                  <span class="text-slate-400 line-through text-xs">Antes $${content.originalPrice || '149.900'}</span>
+                  <div class="flex items-baseline justify-center mt-1">
+                    <span class="text-4xl font-black text-emerald-600">$${content.price || '89.900'}</span>
+                    <span class="text-slate-500 text-xs ml-2 font-bold">COP / Envío Gratis</span>
                   </div>
                 </div>
                 
-                <button onclick="handlePurchase()" class="w-full sm:w-auto px-8 py-4 text-base font-semibold rounded-xl bg-purple-600 hover:bg-purple-500 shadow-[0_0_25px_rgba(147,51,234,0.5)] transition-all duration-300 transform hover:-translate-y-0.5">
-                  ${content.buttonText || 'Adquirir Ahora'}
+                <button onclick="handlePurchase()" class="w-full px-8 py-3.5 text-sm font-black rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/30 transition-all duration-300 transform hover:-translate-y-0.5 anim-shake">
+                  ${content.buttonText || 'PEDIR CON DESCUENTO'}
                 </button>
               </div>
               
-              <div class="mt-8">
-                <h4 class="text-sm font-semibold uppercase tracking-wider text-purple-400 mb-4">¿Qué incluye tu compra?</h4>
-                <ul class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="mt-6 text-left">
+                <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-3">¿Qué incluye tu pedido?</h4>
+                <ul class="grid grid-cols-1 gap-2.5">
                   ${features.map(f => `
-                    <li class="flex items-center text-slate-300 text-sm">
-                      <svg class="w-5 h-5 text-purple-500 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                      ${f}
+                    <li class="flex items-center text-slate-700 text-xs">
+                      <div class="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mr-2 shrink-0">
+                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                      </div>
+                      <span class="font-medium">${f}</span>
                     </li>
                   `).join('')}
                 </ul>
@@ -126,17 +140,17 @@ function renderSection(section) {
     case 'faq':
       const questions = content.questions || [];
       return `
-        <section class="py-24 px-6 bg-slate-900 text-white">
-          <div class="max-w-4xl mx-auto">
-            <h2 class="text-3xl font-bold text-center mb-12">${content.title || 'Preguntas Frecuentes'}</h2>
-            <div class="space-y-6">
+        <section class="py-12 px-6 bg-slate-50 text-slate-900 border-b border-slate-100">
+          <div class="max-w-xl mx-auto">
+            <h2 class="text-xl font-black text-center mb-8 text-slate-900">${content.title || 'Preguntas Frecuentes'}</h2>
+            <div class="space-y-4">
               ${questions.map((q, idx) => `
-                <div class="p-6 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md">
-                  <h4 class="text-lg font-semibold text-purple-300 flex items-start">
-                    <span class="bg-purple-600/20 text-purple-400 text-xs px-2.5 py-1 rounded-md mr-3 mt-0.5">Q</span>
+                <div class="p-5 rounded-2xl bg-white border border-slate-100 shadow-sm">
+                  <h4 class="text-xs font-bold text-slate-900 flex items-start">
+                    <span class="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded-md mr-3 mt-0.5 font-extrabold shrink-0">Q</span>
                     ${q.q}
                   </h4>
-                  <p class="mt-3 text-slate-400 pl-10 leading-relaxed">${q.a}</p>
+                  <p class="mt-2 text-xs text-slate-500 pl-8 leading-relaxed">${q.a}</p>
                 </div>
               `).join('')}
             </div>
@@ -147,16 +161,13 @@ function renderSection(section) {
     case 'gallery':
       const images = content.images || [];
       return `
-        <section class="py-24 px-6 bg-slate-950 text-white">
-          <div class="max-w-6xl mx-auto">
-            <h2 class="text-3xl font-bold text-center mb-12">${content.title || 'Galería de Producto'}</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              ${images.map(img => `
-                <div class="group relative rounded-2xl overflow-hidden border border-white/10 bg-slate-900 aspect-square">
-                  <img src="${img}" alt="Preview" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy">
-                  <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
-                    <p class="text-sm font-semibold text-white">Imagen Comercial</p>
-                  </div>
+        <section class="py-6 bg-white border-b border-slate-100">
+          <div class="max-w-xl mx-auto">
+            ${content.title ? `<h2 class="text-lg font-black text-center text-slate-900 mb-6 px-6">${content.title}</h2>` : ''}
+            <div class="grid grid-cols-1 gap-0">
+              ${images.filter(img => img).map(img => `
+                <div class="bg-white overflow-hidden">
+                  <img src="${img}" alt="Gallería" class="w-full h-auto block" loading="lazy">
                 </div>
               `).join('')}
             </div>
@@ -167,23 +178,31 @@ function renderSection(section) {
     case 'reviews':
       const reviews = content.reviews || [];
       return `
-        <section class="py-24 px-6 bg-slate-900 text-white">
-          <div class="max-w-6xl mx-auto">
-            <h2 class="text-3xl font-bold text-center mb-12">${content.title || 'Lo Que Opinan Nuestros Clientes'}</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <section class="py-12 px-6 bg-slate-50 text-slate-900 border-b border-slate-100">
+          <div class="max-w-xl mx-auto">
+            <h2 class="text-xl font-black text-center mb-8 text-slate-900">${content.title || 'Lo Que Opinan Nuestros Clientes'}</h2>
+            <div class="grid grid-cols-1 gap-4">
               ${reviews.map(r => `
-                <div class="p-8 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md relative flex flex-col justify-between">
-                  <div class="mb-6">
-                    <div class="flex text-amber-400 mb-4">
+                <div class="p-5 rounded-2xl bg-white border border-slate-100 shadow-sm relative flex flex-col justify-between">
+                  <div class="mb-4">
+                    <div class="flex text-amber-400 gap-0.5 mb-2">
                       ${Array(r.rating || 5).fill('').map(() => `
-                        <svg class="w-5 h-5 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                        <svg class="w-4.5 h-4.5 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
                       `).join('')}
                     </div>
-                    <p class="text-slate-300 italic">"${r.comment || 'Excelente producto'}"</p>
+                    <p class="text-slate-700 text-xs italic">"${r.comment || 'Excelente producto'}"</p>
                   </div>
-                  <div>
-                    <h5 class="text-slate-100 font-bold">${r.name || 'Cliente Satisfecho'}</h5>
-                    <span class="text-slate-500 text-xs">${r.title || 'Comprador verificado'}</span>
+                  <div class="flex items-center gap-2 border-t border-slate-100 pt-3 mt-1">
+                    <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[10px] uppercase">
+                      ${r.name ? r.name.charAt(0) : 'U'}
+                    </div>
+                    <div>
+                      <h5 class="text-slate-900 font-bold text-xs flex items-center gap-1.5">
+                        <span>${r.name || 'Cliente Satisfecho'}</span>
+                        <span class="inline-flex items-center text-[8px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-bold">Verificado</span>
+                      </h5>
+                      <span class="text-slate-400 text-[10px]">${r.title || 'Comprador verificado'}</span>
+                    </div>
                   </div>
                 </div>
               `).join('')}
@@ -210,8 +229,8 @@ function compileLandingHtml(landing, sections) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${landing.seo_title || landing.title}</title>
-  <meta name="description" content="${landing.seo_description || ''}">
+  <title>\${landing.seo_title || landing.title}</title>
+  <meta name="description" content="\${landing.seo_description || ''}">
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -236,12 +255,69 @@ function compileLandingHtml(landing, sections) {
     body {
       font-family: 'Inter', sans-serif;
       scroll-behavior: smooth;
+      background-color: #eef0f3;
+    }
+
+    /* Mobile-first frame on desktop */
+    @media (min-width: 481px) {
+      .ms-mobile-preview {
+        max-width: 480px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        box-shadow: 0 10px 50px rgba(15, 23, 42, 0.08);
+        min-height: 100vh;
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        background-color: #ffffff;
+      }
+      .ms-mobile-preview {
+        width: 100%;
+        min-height: 100vh;
+      }
+    }
+
+    /* Shake Animation for converting CTAs */
+    @keyframes cta-shake {
+      0%, 100% { transform: scale(1) translateX(0); }
+      10%, 30% { transform: scale(1.02) translateX(-4px); }
+      20%, 40% { transform: scale(1.02) translateX(4px); }
+      50% { transform: scale(1) translateX(0); }
+    }
+
+    .anim-shake {
+      animation: cta-shake 3s ease-in-out infinite;
+    }
+
+    /* Floating footer CTA styling */
+    .cta-floating-container {
+      position: fixed !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      padding: 14px 16px !important;
+      background-color: rgba(255, 255, 255, 0.9) !important;
+      backdrop-filter: blur(8px) !important;
+      border-top: 1px solid rgba(15, 23, 42, 0.06) !important;
+      z-index: 99999 !important;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+    }
+
+    @media (min-width: 481px) {
+      .cta-floating-container {
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: 100% !important;
+        max-width: 480px !important;
+      }
     }
   </style>
 
   <!-- Open Graph -->
-  <meta property="og:title" content="${landing.seo_title || landing.title}">
-  <meta property="og:description" content="${landing.seo_description || ''}">
+  <meta property="og:title" content="\${landing.seo_title || landing.title}">
+  <meta property="og:description" content="\${landing.seo_description || ''}">
   <meta property="og:type" content="website">
 
   <!-- Schema.org Product Structured Data -->
@@ -249,21 +325,37 @@ function compileLandingHtml(landing, sections) {
     {
       "@context": "https://schema.org/",
       "@type": "Product",
-      "name": "${landing.title}",
-      "description": "${landing.seo_description || ''}"
+      "name": "\${landing.title}",
+      "description": "\${landing.seo_description || ''}"
     }
   </script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
+<body class="text-slate-800 antialiased">
 
-  <main>
-    ${renderedSections}
-  </main>
+  <div class="ms-mobile-preview relative pb-24">
+    <main>
+      \${renderedSections}
+    </main>
 
-  <footer class="py-12 bg-slate-950 border-t border-white/5 text-center text-slate-500 text-sm">
-    <p>&copy; ${new Date().getFullYear()} ${landing.title}. Todos los derechos reservados.</p>
-    <p class="mt-2 text-xs">Página construida con <a href="https://shopy.uno" class="text-purple-400 hover:underline">shopy.uno</a></p>
-  </footer>
+    <!-- Floating CTA Bar -->
+    <div class="cta-floating-container flex items-center justify-center">
+      <a href="#offer" class="w-full text-center py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-sm tracking-wide shadow-md transition-all duration-300 transform active:scale-95 anim-shake">
+        ¡PEDIR CON DESCUENTO!
+      </a>
+    </div>
+
+    <!-- Floating WhatsApp Button -->
+    <a href="https://wa.me/573242035307?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20este%20producto." target="_blank" rel="noopener noreferrer" aria-label="Contactar por WhatsApp" class="fixed bottom-24 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-green-500 shadow-xl transition-transform hover:scale-110 hover:bg-green-600 active:scale-95">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="h-7 w-7 fill-white">
+        <path d="M16.004 0h-.008C7.174 0 0 7.176 0 16c0 3.5 1.132 6.742 3.052 9.376L1.054 31.28l6.156-1.968C9.758 30.98 12.762 32 16.004 32 24.826 32 32 24.822 32 16S24.826 0 16.004 0zm9.35 22.606c-.392 1.106-1.94 2.024-3.186 2.292-.854.182-1.968.326-5.72-1.23-4.802-1.99-7.892-6.86-8.132-7.178-.23-.318-1.938-2.58-1.938-4.922 0-2.342 1.228-3.494 1.664-3.972.392-.43 1.034-.612 1.648-.612.198 0 .376.01.536.018.478.02.716.048 1.032.796.392.934 1.348 3.276 1.466 3.514.12.238.24.556.08.874-.148.326-.278.47-.516.742-.238.272-.464.48-.702.772-.216.256-.46.53-.196.99.264.452 1.174 1.934 2.52 3.134 1.734 1.544 3.194 2.024 3.648 2.248.354.178.776.138 1.052-.158.348-.376.778-.998 1.216-1.612.31-.438.702-.494 1.094-.334.398.152 2.526 1.19 2.958 1.408.432.218.72.326.826.508.104.182.104 1.062-.288 2.168z"></path>
+      </svg>
+    </a>
+
+    <footer class="py-12 bg-white border-t border-slate-100 text-center text-slate-400 text-xs">
+      <p>&copy; \${new Date().getFullYear()} \${landing.title}. Todos los derechos reservados.</p>
+      <p class="mt-2">Página construida con <a href="https://shopy.uno" class="text-emerald-500 hover:underline font-extrabold">shopy.uno</a></p>
+    </footer>
+  </div>
 
   <script>
     // Purchase Trigger
@@ -272,7 +364,7 @@ function compileLandingHtml(landing, sections) {
       fetch('/api/analytics/click', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ landingId: '${landing.id}', type: 'purchase_click' })
+        body: JSON.stringify({ landingId: '\${landing.id}', type: 'purchase_click' })
       }).catch(err => console.error(err));
       
       alert('¡Redirigiendo a la pasarela de pago!');
@@ -283,13 +375,13 @@ function compileLandingHtml(landing, sections) {
       fetch('/api/analytics/visit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ landingId: '${landing.id}' })
+        body: JSON.stringify({ landingId: '\${landing.id}' })
       }).catch(err => console.error(err));
     });
   </script>
 </body>
 </html>
-  `;
+  \`;
 }
 
 /**

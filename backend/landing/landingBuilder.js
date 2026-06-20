@@ -39,10 +39,10 @@ const DEFAULT_SECTIONS = [
     content_json: {
       title: 'El producto revolucionario que estabas esperando',
       subtitle: 'La solución definitiva para optimizar tu día a día con tecnología premium.',
-      ctaText: 'Comprar Ahora',
+      ctaText: 'PEDIR CON DESCUENTO',
       ctaLink: '#offer',
-      bgType: 'gradient',
-      theme: 'dark'
+      bgType: 'image',
+      theme: 'light'
     }
   },
   {
@@ -51,9 +51,9 @@ const DEFAULT_SECTIONS = [
     content_json: {
       title: '¿Por qué elegir nuestro producto?',
       items: [
-        { title: 'Alta Calidad', description: 'Materiales seleccionados y diseño ergonómico de primer nivel.' },
-        { title: 'Generado por IA', description: 'Optimizado de manera inteligente para maximizar tu rendimiento.' },
-        { title: 'Garantía Total', description: '30 días de devolución asegurada sin preguntas.' }
+        { title: 'Envío Gratis & Contra Entrega', description: 'Pagas en efectivo al recibir tu pedido en la puerta de tu casa.' },
+        { title: 'Calidad Premium Garantizada', description: 'Fabricado con los mejores estándares para una máxima durabilidad.' },
+        { title: 'Garantía Total de Satisfacción', description: 'Si el producto no cumple con lo esperado, te devolvemos tu dinero.' }
       ]
     }
   },
@@ -62,11 +62,11 @@ const DEFAULT_SECTIONS = [
     position: 2,
     content_json: {
       title: 'Oferta Especial de Lanzamiento',
-      price: '49.99',
-      originalPrice: '99.99',
-      features: ['Acceso ilimitado', 'Soporte 24/7', 'Envío gratis a todo el país'],
-      badge: '50% DESCUENTO',
-      buttonText: 'Adquirir Oferta'
+      price: '89.900',
+      originalPrice: '149.900',
+      features: ['Envío Gratis a Nivel Nacional', 'Pago Contra Entrega en Efectivo', 'Garantía Directa de 30 Días', 'Soporte VIP por WhatsApp'],
+      badge: 'ENVÍO GRATIS + PAGO CONTRAENTREGA',
+      buttonText: 'PEDIR CON DESCUENTO'
     }
   },
   {
@@ -75,8 +75,9 @@ const DEFAULT_SECTIONS = [
     content_json: {
       title: 'Preguntas Frecuentes',
       questions: [
-        { q: '¿Cuánto tarda el envío?', a: 'El envío nacional tarda entre 2 y 4 días hábiles.' },
-        { q: '¿Qué métodos de pago aceptan?', a: 'Aceptamos todas las tarjetas de crédito, débito y PayPal.' }
+        { q: '¿Tiene costo el envío?', a: 'No, el envío es completamente gratis a cualquier parte del país.' },
+        { q: '¿Cómo funciona el Pago Contra Entrega?', a: 'Pagas en efectivo únicamente al momento de recibir el producto en tu domicilio.' },
+        { q: '¿Qué garantía tengo?', a: 'Ofrecemos 30 días de garantía total por defectos de fábrica o inconformidad.' }
       ]
     }
   }

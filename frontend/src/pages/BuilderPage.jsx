@@ -279,112 +279,201 @@ export default function BuilderPage() {
               width: previewMode === 'mobile' ? '375px' : previewMode === 'tablet' ? '768px' : '100%',
               maxHeight: '100%'
             }}
-          >
-            {/* Compiling Preview Layout */}
+          >            {/* Compiling Preview Layout */}
             {sections.length === 0 ? (
               <div class="p-12 text-center text-slate-500 flex flex-col items-center justify-center min-h-[50vh]">
                 <Plus class="w-12 h-12 stroke-1 animate-pulse text-purple-400" />
                 <p class="text-sm mt-4">Comienza a agregar secciones en el panel izquierdo.</p>
               </div>
             ) : (
-              <div class="divide-y divide-white/5 pointer-events-none">
-                {sections.map((sec, idx) => (
-                  <div 
-                    key={idx} 
-                    class={`relative group border ${activeSectionIdx === idx ? 'border-purple-500' : 'border-transparent'}`}
-                  >
-                    {/* Render visual layouts based on type */}
-                    {sec.type === 'hero' && (
-                      <div 
-                        class="py-24 px-6 text-center relative overflow-hidden bg-slate-900/60 flex flex-col items-center justify-center min-h-[320px]"
-                        style={{
-                          backgroundImage: sec.content_json.coverImage ? `linear-gradient(to bottom, rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.85)), url(${sec.content_json.coverImage})` : 'none',
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
-                        }}
-                      >
-                        <div class="max-w-xl mx-auto space-y-4 relative z-10">
-                          <h1 class="text-3xl font-extrabold text-white leading-tight">{sec.content_json.title || 'Título'}</h1>
-                          <p class="text-sm text-slate-300 max-w-md mx-auto">{sec.content_json.subtitle || 'Subtítulo'}</p>
-                          <button class="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-bold text-white mt-4 shadow-lg shadow-purple-600/20 inline-block">
-                            {sec.content_json.ctaText || 'Comprar'}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {sec.type === 'benefits' && (
-                      <div class="py-16 px-6 bg-slate-900/60">
-                        <h2 class="text-xl font-bold text-center text-slate-200 mb-8">{sec.content_json.title || 'Beneficios'}</h2>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
-                          {(sec.content_json.items || []).map((item, i) => (
-                            <div key={i} class="p-4 rounded-xl bg-white/5 border border-white/5">
-                              <h4 class="font-bold text-sm text-purple-300">{item.title}</h4>
-                              <p class="text-xs text-slate-400 mt-1">{item.description}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {sec.type === 'offer' && (
-                      <div class="py-16 px-6 bg-slate-950 text-center">
-                        <div class="max-w-md mx-auto p-6 rounded-2xl bg-white/5 border border-white/10">
-                          {sec.content_json.badge && (
-                            <span class="px-2.5 py-1 rounded-full text-[10px] bg-purple-600 text-white font-bold inline-block mb-3">{sec.content_json.badge}</span>
-                          )}
-                          <h3 class="font-bold text-lg">{sec.content_json.title}</h3>
-                          <div class="my-4 flex items-center justify-center gap-2">
-                            <span class="line-through text-xs text-slate-500">${sec.content_json.originalPrice}</span>
-                            <span class="text-2xl font-bold text-purple-400">${sec.content_json.price}</span>
+              <div 
+                class={`transition-all duration-300 w-full ${
+                  previewMode === 'desktop' ? 'bg-[#eef0f3] py-8 px-4 flex justify-center min-h-screen' : 'bg-white min-h-screen'
+                }`}
+              >
+                <div 
+                  class={`w-full divide-y divide-slate-100 bg-white pointer-events-none relative pb-24 ${
+                    previewMode === 'desktop' ? 'max-w-[480px] shadow-2xl border border-slate-200/60 rounded-2xl overflow-hidden' : ''
+                  }`}
+                >
+                  {sections.map((sec, idx) => (
+                    <div 
+                      key={idx} 
+                      class={`relative group border-2 transition-all ${
+                        activeSectionIdx === idx ? 'border-emerald-500 z-10' : 'border-transparent'
+                      }`}
+                    >
+                      {/* Render visual layouts based on type */}
+                      {sec.type === 'hero' && (
+                        sec.content_json.coverImage && !sec.content_json.title && !sec.content_json.subtitle ? (
+                          <div class="relative bg-white overflow-hidden">
+                            <img src={sec.content_json.coverImage} alt="Hero Banner" class="w-full h-auto block" />
                           </div>
-                          <button class="px-6 py-3 bg-purple-600 text-xs font-bold rounded-lg text-white w-full">{sec.content_json.buttonText}</button>
-                        </div>
-                      </div>
-                    )}
-
-                    {sec.type === 'faq' && (
-                      <div class="py-16 px-6 bg-slate-900/20 max-w-xl mx-auto">
-                        <h3 class="font-bold text-center mb-6">{sec.content_json.title}</h3>
-                        <div class="space-y-3">
-                          {(sec.content_json.questions || []).map((q, i) => (
-                            <div key={i} class="p-3 rounded-lg bg-white/5 text-left">
-                              <h5 class="text-xs font-bold text-purple-300">Q: {q.q}</h5>
-                              <p class="text-xs text-slate-400 mt-1">A: {q.a}</p>
+                        ) : (
+                          <div 
+                            class="py-16 px-6 text-center relative overflow-hidden flex flex-col items-center justify-center min-h-[280px]"
+                            style={{
+                              backgroundImage: sec.content_json.coverImage ? `linear-gradient(to bottom, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.95)), url(${sec.content_json.coverImage})` : 'none',
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center',
+                              backgroundColor: '#ffffff'
+                            }}
+                          >
+                            <div class="max-w-md mx-auto space-y-3 relative z-10 text-slate-900">
+                              {sec.content_json.badge && (
+                                <span class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-full inline-block">
+                                  {sec.content_json.badge}
+                                </span>
+                              )}
+                              <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight">{sec.content_json.title || 'Título'}</h1>
+                              {sec.content_json.subtitle && <p class="text-xs text-slate-500 max-w-sm mx-auto">{sec.content_json.subtitle}</p>}
+                              {sec.content_json.ctaText && (
+                                <button class="px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-xs font-bold text-white mt-2 shadow-lg shadow-emerald-500/25 inline-block anim-shake">
+                                  {sec.content_json.ctaText}
+                                </button>
+                              )}
                             </div>
-                          ))}
+                          </div>
+                        )
+                      )}
+                      
+                      {sec.type === 'benefits' && (
+                        <div class="py-12 px-6 bg-slate-50 text-slate-900 border-b border-slate-100">
+                          <h2 class="text-lg font-black text-center text-slate-900 mb-6">{sec.content_json.title || 'Beneficios'}</h2>
+                          <div class="grid grid-cols-1 gap-3 max-w-md mx-auto">
+                            {(sec.content_json.items || []).map((item, i) => (
+                              <div key={i} class="p-4 rounded-xl bg-white border border-slate-100 shadow-sm flex items-start gap-3">
+                                <div class="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" class="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <h4 class="font-bold text-xs text-slate-900">{item.title}</h4>
+                                  <p class="text-[11px] text-slate-500 mt-0.5">{item.description}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-
-                    {sec.type === 'reviews' && (
-                      <div class="py-16 px-6 bg-slate-900/50">
-                        <h3 class="font-bold text-center mb-8">{sec.content_json.title}</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto">
-                          {(sec.content_json.reviews || []).map((r, i) => (
-                            <div key={i} class="p-4 rounded-xl bg-white/5 border border-white/5">
-                              <p class="text-xs italic text-slate-300">"{r.comment}"</p>
-                              <h5 class="text-xs font-bold text-purple-300 mt-3">{r.name} - ⭐ {r.rating}</h5>
+                      )}
+                      
+                      {sec.type === 'offer' && (
+                        <div class="py-12 px-6 bg-white text-slate-800" id="offer">
+                          <div class="max-w-md mx-auto p-6 rounded-2xl bg-slate-50 border border-slate-100 shadow-lg text-center">
+                            {sec.content_json.badge && (
+                              <span class="px-2.5 py-1 rounded-full text-[9px] bg-emerald-500 text-white font-black uppercase tracking-wider inline-block mb-3 animate-pulse">{sec.content_json.badge}</span>
+                            )}
+                            <h3 class="font-bold text-base text-slate-900">{sec.content_json.title}</h3>
+                            <div class="my-3 flex flex-col items-center gap-1">
+                              <span class="line-through text-xs text-slate-400">Antes ${sec.content_json.originalPrice}</span>
+                              <div class="flex items-baseline justify-center">
+                                <span class="text-3xl font-black text-emerald-600">${sec.content_json.price}</span>
+                                <span class="text-slate-500 text-[10px] ml-1.5 font-bold">COP / Envío Gratis</span>
+                              </div>
                             </div>
-                          ))}
+                            <button class="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-xs font-black rounded-xl text-white w-full shadow-md shadow-emerald-500/20 transform active:scale-95 transition-all anim-shake">{sec.content_json.buttonText || 'PEDIR CON DESCUENTO'}</button>
+                            {sec.content_json.features && (
+                              <div class="mt-4 text-left border-t border-slate-200/60 pt-3">
+                                <ul class="space-y-1.5">
+                                  {(sec.content_json.features || []).map((f, i) => (
+                                    <li key={i} class="flex items-center text-slate-600 text-[10px] font-medium">
+                                      <div class="w-3.5 h-3.5 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mr-2 shrink-0">
+                                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                                      </div>
+                                      {f}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {sec.type === 'gallery' && (
-                      <div class="py-16 px-6 bg-slate-950">
-                        <h3 class="font-bold text-center mb-6">{sec.content_json.title}</h3>
-                        <div class="grid grid-cols-3 gap-3 max-w-lg mx-auto">
-                          {(sec.content_json.images || []).map((img, i) => (
-                            <div key={i} class="aspect-square bg-slate-900 border border-white/5 rounded-lg overflow-hidden flex items-center justify-center">
-                              {img ? <img src={img} alt="" class="w-full h-full object-cover" /> : <ImageIcon class="w-6 h-6 text-slate-600" />}
-                            </div>
-                          ))}
+                      {sec.type === 'faq' && (
+                        <div class="py-12 px-6 bg-slate-50 text-slate-900 border-b border-slate-100">
+                          <h3 class="font-bold text-center mb-6 text-sm uppercase tracking-wider text-slate-400">{sec.content_json.title}</h3>
+                          <div class="space-y-3 max-w-md mx-auto">
+                            {(sec.content_json.questions || []).map((q, i) => (
+                              <div key={i} class="p-4 rounded-xl bg-white border border-slate-100 shadow-sm text-left">
+                                <h5 class="text-xs font-bold text-slate-900 flex items-start">
+                                  <span class="bg-emerald-100 text-emerald-700 text-[9px] px-1.5 py-0.5 rounded mr-2 shrink-0 font-black">Q</span>
+                                  {q.q}
+                                </h5>
+                                <p class="text-[11px] text-slate-500 mt-1.5 pl-6 leading-relaxed">{q.a}</p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+
+                      {sec.type === 'reviews' && (
+                        <div class="py-12 px-6 bg-slate-50 border-b border-slate-100">
+                          <h3 class="font-bold text-center mb-6 text-slate-900">{sec.content_json.title}</h3>
+                          <div class="grid grid-cols-1 gap-3 max-w-md mx-auto">
+                            {(sec.content_json.reviews || []).map((r, i) => (
+                              <div key={i} class="p-4 rounded-xl bg-white border border-slate-100 shadow-sm flex flex-col justify-between">
+                                <div class="mb-2">
+                                  <div class="flex text-amber-400 mb-2 text-xs">
+                                    {Array(r.rating || 5).fill('').map((_, idx) => (
+                                      <span key={idx}>★</span>
+                                    ))}
+                                  </div>
+                                  <p class="text-xs italic text-slate-600">"{r.comment}"</p>
+                                </div>
+                                <div class="flex items-center gap-2 border-t border-slate-100 pt-2 mt-1">
+                                  <div class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[9px] uppercase">
+                                    {r.name ? r.name.charAt(0) : 'U'}
+                                  </div>
+                                  <div>
+                                    <h5 class="text-slate-900 font-bold text-[10px] flex items-center gap-1">
+                                      <span>{r.name}</span>
+                                      <span class="text-[7px] bg-green-100 text-green-700 px-1.5 py-0.2 rounded-full font-bold">Verificado</span>
+                                    </h5>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {sec.type === 'gallery' && (
+                        <div class="py-6 bg-white border-b border-slate-100">
+                          {sec.content_json.title && <h3 class="font-bold text-center text-slate-950 mb-4 px-6 text-sm">{sec.content_json.title}</h3>}
+                          <div class="grid grid-cols-1 gap-0 max-w-md mx-auto">
+                            {(sec.content_json.images || []).filter(img => img).map((img, i) => (
+                              <div key={i} class="bg-white overflow-hidden">
+                                <img src={img} alt="" class="w-full h-auto block" />
+                              </div>
+                            ))}
+                            {(sec.content_json.images || []).filter(img => !img).map((_, i) => (
+                              <div key={i} class="p-6 border border-dashed border-slate-200 m-2 rounded-xl flex items-center justify-center text-slate-400 bg-slate-50 text-xs">
+                                <ImageIcon class="w-5 h-5 mr-1" />
+                                <span>Slot de imagen vacío</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {/* Floating CTA simulation inside the canvas container */}
+                  <div class="absolute bottom-0 left-0 right-0 p-3.5 bg-white/95 backdrop-blur border-t border-slate-100 flex items-center justify-center z-20 shadow-[0_-4px_15px_rgba(0,0,0,0.04)]">
+                    <button class="w-full text-center py-2.5 rounded-xl bg-emerald-500 text-white font-extrabold text-xs tracking-wide shadow-md shadow-emerald-500/10">
+                      ¡PEDIR CON DESCUENTO!
+                    </button>
                   </div>
-                ))}
+
+                  {/* Floating WhatsApp simulation inside the canvas container */}
+                  <div class="absolute bottom-16 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-green-500 shadow-lg text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="h-5 w-5 fill-white">
+                      <path d="M16.004 0h-.008C7.174 0 0 7.176 0 16c0 3.5 1.132 6.742 3.052 9.376L1.054 31.28l6.156-1.968C9.758 30.98 12.762 32 16.004 32 24.826 32 32 24.822 32 16S24.826 0 16.004 0zm9.35 22.606c-.392 1.106-1.94 2.024-3.186 2.292-.854.182-1.968.326-5.72-1.23-4.802-1.99-7.892-6.86-8.132-7.178-.23-.318-1.938-2.58-1.938-4.922 0-2.342 1.228-3.494 1.664-3.972.392-.43 1.034-.612 1.648-.612.198 0 .376.01.536.018.478.02.716.048 1.032.796.392.934 1.348 3.276 1.466 3.514.12.238.24.556.08.874-.148.326-.278.47-.516.742-.238.272-.464.48-.702.772-.216.256-.46.53-.196.99.264.452 1.174 1.934 2.52 3.134 1.734 1.544 3.194 2.024 3.648 2.248.354.178.776.138 1.052-.158.348-.376.778-.998 1.216-1.612.31-.438.702-.494 1.094-.334.398.152 2.526 1.19 2.958 1.408.432.218.72.326.826.508.104.182.104 1.062-.288 2.168z"></path>
+                    </svg>
+                  </div>
+                </div>
               </div>
             )}
           </div>

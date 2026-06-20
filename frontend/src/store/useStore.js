@@ -749,23 +749,36 @@ export const useStore = create((set, get) => ({
 function getSeedContent(type) {
   switch (type) {
     case 'hero':
-      return { title: 'Nuevo Título Hero', subtitle: 'Describe tu valor agregado', ctaText: 'Comprar', ctaLink: '#offer' };
+      return { title: 'Nuevo Título Hero', subtitle: 'Describe tu valor agregado aquí con frases llamativas y persuasivas.', ctaText: 'PEDIR CON DESCUENTO', ctaLink: '#offer', theme: 'light' };
     case 'benefits':
       return {
-        title: 'Beneficios',
+        title: 'Beneficios Exclusivos',
         items: [
-          { title: 'Beneficio 1', description: 'Detalle sobre por qué es increíble.' },
-          { title: 'Beneficio 2', description: 'Detalle adicional sobre la experiencia.' }
+          { title: 'Envío Gratis & Contra Entrega', description: 'Pagas en efectivo únicamente al recibir en la puerta de tu hogar.' },
+          { title: 'Calidad Premium Garantizada', description: 'Fabricado con materiales de alta gama para asegurar máxima durabilidad.' },
+          { title: 'Garantía Total de Satisfacción', description: 'Si el producto no te fascina, tienes 30 días para solicitar cambio o devolución.' }
         ]
       };
     case 'offer':
-      return { title: 'Oferta Especial', price: '29.99', originalPrice: '59.99', features: ['Característica A', 'Característica B'], badge: '30% OFF', buttonText: 'Ordenar' };
+      return { title: 'Oferta Especial de Lanzamiento', price: '89.900', originalPrice: '149.900', features: ['Envío Gratis a Todo el País', 'Pago Contra Entrega en Efectivo', 'Garantía Directa de Fábrica', 'Soporte VIP por WhatsApp'], badge: 'ENVÍO GRATIS + PAGO CONTRAENTREGA', buttonText: 'PEDIR CON DESCUENTO' };
     case 'faq':
-      return { title: 'Preguntas', questions: [{ q: '¿Pregunta?', a: 'Respuesta.' }] };
+      return { 
+        title: 'Preguntas Frecuentes', 
+        questions: [
+          { q: '¿Tiene costo el envío?', a: 'No, el envío es completamente gratis a cualquier parte del país.' },
+          { q: '¿Cómo pago mi pedido?', a: 'Pagas en efectivo únicamente al momento de recibir el producto en tu domicilio.' }
+        ] 
+      };
     case 'reviews':
-      return { title: 'Testimonios', reviews: [{ name: 'Juan Perez', comment: 'Me encantó este producto.', rating: 5 }] };
+      return { 
+        title: 'Lo Que Opinan Nuestros Clientes', 
+        reviews: [
+          { name: 'María Camila Restrepo', comment: '¡Excelente producto! La calidad superó mis expectativas, llegó súper rápido y lo mejor de todo es que pude pagar contra entrega.', rating: 5 },
+          { name: 'Juan Fernando Alba', comment: 'Muy recomendado. Suave, calientito y el envío gratis es una maravilla. El repartidor fue muy amable.', rating: 5 }
+        ] 
+      };
     case 'gallery':
-      return { title: 'Galería', images: [] };
+      return { title: 'Galería de Producto', images: [] };
     default:
       return {};
   }
