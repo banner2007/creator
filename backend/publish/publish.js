@@ -211,6 +211,36 @@ function renderSection(section) {
         </section>
       `;
 
+    case 'cta':
+      return `
+        <section class="py-12 px-6 bg-white text-center border-b border-slate-100">
+          <div class="max-w-xl mx-auto space-y-6">
+            ${content.coverImage ? `
+              <div class="relative rounded-2xl overflow-hidden shadow-md">
+                <img src="${content.coverImage}" alt="CTA Banner" class="w-full h-auto block" loading="lazy">
+              </div>
+            ` : ''}
+            ${content.title ? `<h3 class="text-xl font-bold text-slate-900 leading-tight">${content.title}</h3>` : ''}
+            ${content.subtitle ? `<p class="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">${content.subtitle}</p>` : ''}
+            <div class="flex justify-center">
+              <a href="${content.buttonLink || '#offer'}" class="px-8 py-3.5 text-xs font-black rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 transition-all duration-300 transform hover:-translate-y-0.5 anim-shake inline-block">
+                ${content.buttonText || 'COMPRAR AHORA'}
+              </a>
+            </div>
+          </div>
+        </section>
+      `;
+
+    case 'comparison':
+      return `
+        <div 
+          class="py-3 px-6 text-center font-extrabold text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center min-h-[40px] border-b border-black/10 select-none shadow-[inset_0_-2px_6px_rgba(0,0,0,0.05)]"
+          style="background-color: ${content.bgColor || '#9333ea'}; color: ${content.textColor || '#ffffff'};"
+        >
+          <span>${content.text || 'Texto de la franja'}</span>
+        </div>
+      `;
+
     default:
       return '';
   }
@@ -223,7 +253,7 @@ function compileLandingHtml(landing, sections) {
     .map(renderSection)
     .join('');
 
-  return `
+  let html = `
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -314,9 +344,6 @@ function compileLandingHtml(landing, sections) {
       }
     }
   </style>
-
-  // Open Graph
-  let html = `
   <!-- Open Graph -->
   <meta property="og:title" content="${landing.seo_title || landing.title}">
   <meta property="og:description" content="${landing.seo_description || ''}">

@@ -454,7 +454,7 @@ export default function BuilderPage() {
             {/* Header */}
             <div className="p-4 border-b border-white/5 flex items-center justify-between">
               <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 capitalize">
-                {activeLeftTab === 'css' ? 'CSS Personalizado' : activeLeftTab}
+                {activeLeftTab === 'css' ? 'CSS Personalizado' : activeLeftTab === 'fotos' ? 'Imagenes' : activeLeftTab}
               </h3>
               <button 
                 onClick={() => setIsLeftPanelOpen(false)}
@@ -552,53 +552,54 @@ export default function BuilderPage() {
               {/* 2. FOTOS SUB-PANEL */}
               {activeLeftTab === 'fotos' && (
                 <div className="space-y-4">
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 block">Galería del proyecto</span>
-                  
-                  {generatedImages.length === 0 ? (
-                    <div className="py-8 text-center text-slate-500 text-xs flex flex-col items-center justify-center border border-dashed border-white/10 rounded-2xl p-4 gap-2">
-                      <ImageIcon className="w-8 h-8 text-slate-600 stroke-1" />
-                      <p>Aún no hay fotos en este proyecto. Genere imágenes con la IA o suba fotos locales en la pestaña 'Subidos'.</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-3">
-                      {generatedImages.map(img => (
-                        <div 
-                          key={img.id}
-                          onClick={() => handleSelectAsset(img.image_url)}
-                          className={`aspect-square rounded-xl overflow-hidden border bg-slate-950 cursor-pointer relative group transition-all ${
-                            activeImageSlot ? 'hover:border-purple-500 hover:scale-102 border-white/10' : 'border-white/10 hover:border-white/20'
-                          }`}
-                          title={activeImageSlot ? 'Haga clic para aplicar esta imagen' : 'Haga clic para copiar el enlace de la imagen'}
-                        >
-                          <img src={img.image_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                            {activeImageSlot ? (
-                              <CheckCircle className="w-6 h-6 text-purple-400" />
-                            ) : (
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(img.image_url); alert('Enlace de la imagen copiado'); }}
-                                  className="p-1.5 rounded bg-slate-900 border border-white/15 text-slate-300 hover:text-white"
-                                  title="Copiar enlace"
-                                >
-                                  <Copy className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); if (confirm('¿Eliminar esta imagen de los assets?')) deleteProjectImage(img.id); }}
-                                  className="p-1.5 rounded bg-red-950/80 border border-red-900/30 text-red-400 hover:text-red-300"
-                                  title="Eliminar"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Card 1: Imagen */}
+                    <button
+                      onClick={() => addSection('hero', {
+                        title: '',
+                        subtitle: '',
+                        ctaText: '',
+                        coverImage: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=800',
+                        badge: '',
+                        theme: 'light'
+                      })}
+                      className="flex flex-col items-center justify-center p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/5 hover:border-white/10 transition-all text-center group cursor-pointer aspect-square"
+                    >
+                      <span className="text-3xl mb-2 filter drop-shadow-md group-hover:scale-110 transition-transform">🖼️</span>
+                      <span className="text-xs font-bold text-slate-200">Imagen</span>
+                      <span className="text-[10px] text-slate-500 mt-1">Foto full width</span>
+                    </button>
+
+                    {/* Card 2: Imagen + Boton */}
+                    <button
+                      onClick={() => addSection('cta', {
+                        title: '',
+                        subtitle: '',
+                        buttonText: 'COMPRAR AHORA',
+                        buttonLink: '#offer',
+                        coverImage: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=800'
+                      })}
+                      className="flex flex-col items-center justify-center p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/5 hover:border-white/10 transition-all text-center group cursor-pointer aspect-square"
+                    >
+                      <span className="text-3xl mb-2 filter drop-shadow-md group-hover:scale-110 transition-transform">📷</span>
+                      <span className="text-xs font-bold text-slate-200">Imagen + Boton</span>
+                      <span className="text-[10px] text-slate-500 mt-1">Foto con CTA abajo</span>
+                    </button>
+
+                    {/* Card 3: Franja Color */}
+                    <button
+                      onClick={() => addSection('comparison', {
+                        text: '🔥 OFERTA DE LANZAMIENTO: 50% DE DESCUENTO + ENVÍO GRATIS HOY 🔥',
+                        bgColor: '#9333ea',
+                        textColor: '#ffffff'
+                      })}
+                      className="flex flex-col items-center justify-center p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/5 hover:border-white/10 transition-all text-center group cursor-pointer aspect-square"
+                    >
+                      <span className="text-3xl mb-2 filter drop-shadow-md group-hover:scale-110 transition-transform">🎨</span>
+                      <span className="text-xs font-bold text-slate-200">Franja Color</span>
+                      <span className="text-[10px] text-slate-500 mt-1">Texto sobre color</span>
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -713,27 +714,51 @@ export default function BuilderPage() {
                     </div>
                   </div>
 
-                  {/* Quick display of recently uploaded assets */}
+                  {/* Gallery of all Project Images */}
                   <div className="space-y-3 pt-4 border-t border-white/5">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 block">Assets subidos recientemente</span>
-                    <div className="grid grid-cols-3 gap-2">
-                      {generatedImages.filter(img => img.model === 'upload').slice(0, 6).map(img => (
-                        <div 
-                          key={img.id}
-                          onClick={() => handleSelectAsset(img.image_url)}
-                          className="aspect-square rounded-lg overflow-hidden border border-white/10 bg-slate-950 cursor-pointer relative group"
-                        >
-                          <img src={img.image_url} alt="" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
-                            {activeImageSlot ? (
-                              <CheckCircle className="w-4 h-4 text-purple-400" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5 text-white" />
-                            )}
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 block">Galería del Proyecto</span>
+                    {generatedImages.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic">No hay imágenes en este proyecto.</p>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2">
+                        {generatedImages.map(img => (
+                          <div 
+                            key={img.id}
+                            onClick={() => handleSelectAsset(img.image_url)}
+                            className={`aspect-square rounded-lg overflow-hidden border bg-slate-950 cursor-pointer relative group transition-all ${
+                              activeImageSlot ? 'border-purple-500 scale-102' : 'border-white/10 hover:border-white/20'
+                            }`}
+                            title={activeImageSlot ? 'Haga clic para aplicar esta imagen' : 'Haga clic para copiar el enlace'}
+                          >
+                            <img src={img.image_url} alt="" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                              {activeImageSlot ? (
+                                <CheckCircle className="w-4 h-4 text-purple-400" />
+                              ) : (
+                                <div className="flex gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(img.image_url); alert('Enlace de la imagen copiado'); }}
+                                    className="p-1 rounded bg-slate-900 border border-white/15 text-slate-300 hover:text-white"
+                                    title="Copiar enlace"
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); if (confirm('¿Eliminar esta imagen de los assets?')) deleteProjectImage(img.id); }}
+                                    className="p-1 rounded bg-red-950/80 border border-red-900/30 text-red-400 hover:text-red-300"
+                                    title="Eliminar"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                 </div>
@@ -999,6 +1024,42 @@ export default function BuilderPage() {
                               </div>
                             ))}
                           </div>
+                        </div>
+                      )}
+
+                      {sec.type === 'cta' && (
+                        <div className="py-12 px-6 bg-white text-center border-b border-slate-100">
+                          <div className="max-w-md mx-auto space-y-4">
+                            {sec.content_json.coverImage ? (
+                              <div className="relative rounded-2xl overflow-hidden shadow-md">
+                                <img src={sec.content_json.coverImage} alt="CTA Banner" className="w-full h-auto block" />
+                              </div>
+                            ) : (
+                              <div className="p-12 border border-dashed border-slate-200 rounded-2xl flex items-center justify-center text-slate-400 bg-slate-50 text-xs">
+                                <ImageIcon className="w-5 h-5 mr-1" />
+                                <span>Slot de imagen vacío</span>
+                              </div>
+                            )}
+                            {sec.content_json.title && <h3 className="text-xl font-bold text-slate-900 leading-tight">{sec.content_json.title}</h3>}
+                            {sec.content_json.subtitle && <p className="text-xs text-slate-500 max-w-sm mx-auto">{sec.content_json.subtitle}</p>}
+                            <div className="flex justify-center">
+                              <button className="px-8 py-3.5 text-xs font-black rounded-xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 anim-shake">
+                                {sec.content_json.buttonText || 'COMPRAR AHORA'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {sec.type === 'comparison' && (
+                        <div 
+                          className="py-3 px-6 text-center font-extrabold text-[11px] sm:text-xs uppercase tracking-wider flex items-center justify-center min-h-[40px] border-b border-black/10 select-none shadow-[inset_0_-2px_6px_rgba(0,0,0,0.05)]"
+                          style={{
+                            backgroundColor: sec.content_json.bgColor || '#9333ea',
+                            color: sec.content_json.textColor || '#ffffff'
+                          }}
+                        >
+                          <span>{sec.content_json.text || 'Texto de la franja'}</span>
                         </div>
                       )}
                     </div>
@@ -1295,6 +1356,134 @@ export default function BuilderPage() {
                     >
                       + Añadir Imagen a la Galería
                     </button>
+                  </div>
+                </div>
+              )}
+
+              {sections[activeSectionIdx].type === 'cta' && (
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs text-slate-400 font-semibold">Título del Bloque (Opcional)</label>
+                    <input 
+                      type="text" 
+                      className="glass-input text-xs" 
+                      value={sections[activeSectionIdx].content_json.title || ''}
+                      onChange={e => updateSectionContent(activeSectionIdx, { title: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs text-slate-400 font-semibold">Subtítulo (Opcional)</label>
+                    <textarea 
+                      className="glass-input text-xs resize-none" 
+                      rows="2"
+                      value={sections[activeSectionIdx].content_json.subtitle || ''}
+                      onChange={e => updateSectionContent(activeSectionIdx, { subtitle: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs text-slate-400 font-semibold">Texto del Botón</label>
+                    <input 
+                      type="text" 
+                      className="glass-input text-xs" 
+                      value={sections[activeSectionIdx].content_json.buttonText || ''}
+                      onChange={e => updateSectionContent(activeSectionIdx, { buttonText: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs text-slate-400 font-semibold">Enlace o Ancla del Botón</label>
+                    <input 
+                      type="text" 
+                      className="glass-input text-xs" 
+                      value={sections[activeSectionIdx].content_json.buttonLink || ''}
+                      onChange={e => updateSectionContent(activeSectionIdx, { buttonLink: e.target.value })}
+                    />
+                  </div>
+                  
+                  {/* Cover Image select container */}
+                  <div className="flex flex-col gap-1.5 border-t border-white/5 pt-3">
+                    <label className="text-xs text-slate-400 font-semibold flex items-center justify-between">
+                      <span>Imagen del Banner</span>
+                    </label>
+                    
+                    <div 
+                      onClick={() => {
+                        setActiveImageSlot({ sectionIdx: activeSectionIdx, field: 'coverImage' });
+                        setActiveLeftTab('subidos'); // Switch to subidos tab where gallery is!
+                        setIsLeftPanelOpen(true);
+                      }}
+                      className={`p-3 bg-white/[0.01] border rounded-xl flex items-center justify-between hover:bg-white/5 cursor-pointer transition-all ${
+                        activeImageSlot && activeImageSlot.sectionIdx === activeSectionIdx && activeImageSlot.field === 'coverImage'
+                          ? 'border-purple-500 animate-pulse'
+                          : 'border-white/5'
+                      }`}
+                    >
+                      <span className="text-xs text-slate-500">
+                        {activeImageSlot && activeImageSlot.sectionIdx === activeSectionIdx && activeImageSlot.field === 'coverImage'
+                          ? 'Esperando selección...'
+                           : 'Cambiar Imagen'}
+                      </span>
+                      {sections[activeSectionIdx].content_json.coverImage ? (
+                        <img 
+                          src={sections[activeSectionIdx].content_json.coverImage} 
+                          alt="CTA Banner" 
+                          className="w-10 h-10 object-cover rounded-lg border border-white/10" 
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-white/5 border border-dashed border-white/10 flex items-center justify-center text-slate-600">
+                          +
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {sections[activeSectionIdx].type === 'comparison' && (
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs text-slate-400 font-semibold">Texto de la Franja</label>
+                    <textarea 
+                      className="glass-input text-xs resize-none" 
+                      rows="3"
+                      value={sections[activeSectionIdx].content_json.text || ''}
+                      onChange={e => updateSectionContent(activeSectionIdx, { text: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs text-slate-400 font-semibold">Color de Fondo</label>
+                      <div className="flex gap-2">
+                        <input 
+                          type="color" 
+                          className="w-8 h-8 rounded-lg border-0 bg-transparent cursor-pointer p-0 shrink-0" 
+                          value={sections[activeSectionIdx].content_json.bgColor || '#9333ea'}
+                          onChange={e => updateSectionContent(activeSectionIdx, { bgColor: e.target.value })}
+                        />
+                        <input 
+                          type="text" 
+                          className="glass-input text-xs w-full font-mono uppercase" 
+                          value={sections[activeSectionIdx].content_json.bgColor || '#9333ea'}
+                          onChange={e => updateSectionContent(activeSectionIdx, { bgColor: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs text-slate-400 font-semibold">Color de Texto</label>
+                      <div className="flex gap-2">
+                        <input 
+                          type="color" 
+                          className="w-8 h-8 rounded-lg border-0 bg-transparent cursor-pointer p-0 shrink-0" 
+                          value={sections[activeSectionIdx].content_json.textColor || '#ffffff'}
+                          onChange={e => updateSectionContent(activeSectionIdx, { textColor: e.target.value })}
+                        />
+                        <input 
+                          type="text" 
+                          className="glass-input text-xs w-full font-mono uppercase" 
+                          value={sections[activeSectionIdx].content_json.textColor || '#ffffff'}
+                          onChange={e => updateSectionContent(activeSectionIdx, { textColor: e.target.value })}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

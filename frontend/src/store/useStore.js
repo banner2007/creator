@@ -222,11 +222,11 @@ export const useStore = create((set, get) => ({
     get().triggerAutosave();
   },
 
-  addSection: (type) => {
+  addSection: (type, customContent) => {
     const newSection = {
       type,
       position: get().sections.length,
-      content_json: getSeedContent(type)
+      content_json: customContent || getSeedContent(type)
     };
     set(state => ({
       sections: [...state.sections, newSection],
@@ -828,6 +828,10 @@ function getSeedContent(type) {
       };
     case 'gallery':
       return { title: 'Galería de Producto', images: [] };
+    case 'cta':
+      return { title: '', subtitle: '', buttonText: 'COMPRAR AHORA', buttonLink: '#offer', coverImage: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=800' };
+    case 'comparison':
+      return { text: '🔥 OFERTA ESPECIAL: ENVÍO GRATIS A NIVEL NACIONAL 🔥', bgColor: '#9333ea', textColor: '#ffffff' };
     default:
       return {};
   }
