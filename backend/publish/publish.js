@@ -229,8 +229,8 @@ function compileLandingHtml(landing, sections) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>\${landing.seo_title || landing.title}</title>
-  <meta name="description" content="\${landing.seo_description || ''}">
+  <title>${landing.seo_title || landing.title}</title>
+  <meta name="description" content="${landing.seo_description || ''}">
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -316,8 +316,8 @@ function compileLandingHtml(landing, sections) {
   </style>
 
   <!-- Open Graph -->
-  <meta property="og:title" content="\${landing.seo_title || landing.title}">
-  <meta property="og:description" content="\${landing.seo_description || ''}">
+  <meta property="og:title" content="${landing.seo_title || landing.title}">
+  <meta property="og:description" content="${landing.seo_description || ''}">
   <meta property="og:type" content="website">
 
   <!-- Schema.org Product Structured Data -->
@@ -325,8 +325,8 @@ function compileLandingHtml(landing, sections) {
     {
       "@context": "https://schema.org/",
       "@type": "Product",
-      "name": "\${landing.title}",
-      "description": "\${landing.seo_description || ''}"
+      "name": "${landing.title}",
+      "description": "${landing.seo_description || ''}"
     }
   </script>
 </head>
@@ -334,7 +334,7 @@ function compileLandingHtml(landing, sections) {
 
   <div class="ms-mobile-preview relative pb-24">
     <main>
-      \${renderedSections}
+      ${renderedSections}
     </main>
 
     <!-- Floating CTA Bar -->
@@ -352,7 +352,7 @@ function compileLandingHtml(landing, sections) {
     </a>
 
     <footer class="py-12 bg-white border-t border-slate-100 text-center text-slate-400 text-xs">
-      <p>&copy; \${new Date().getFullYear()} \${landing.title}. Todos los derechos reservados.</p>
+      <p>&copy; ${new Date().getFullYear()} ${landing.title}. Todos los derechos reservados.</p>
       <p class="mt-2">Página construida con <a href="https://shopy.uno" class="text-emerald-500 hover:underline font-extrabold">shopy.uno</a></p>
     </footer>
   </div>
@@ -364,7 +364,7 @@ function compileLandingHtml(landing, sections) {
       fetch('/api/analytics/click', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ landingId: '\${landing.id}', type: 'purchase_click' })
+        body: JSON.stringify({ landingId: '${landing.id}', type: 'purchase_click' })
       }).catch(err => console.error(err));
       
       alert('¡Redirigiendo a la pasarela de pago!');
@@ -375,13 +375,13 @@ function compileLandingHtml(landing, sections) {
       fetch('/api/analytics/visit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ landingId: '\${landing.id}' })
+        body: JSON.stringify({ landingId: '${landing.id}' })
       }).catch(err => console.error(err));
     });
   </script>
 </body>
 </html>
-  \`;
+  `;
 }
 
 /**
