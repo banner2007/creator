@@ -272,7 +272,12 @@ export const useStore = create((set, get) => ({
           method: 'PUT',
           headers: getHeaders(get().token),
           body: JSON.stringify({
-            sections: get().sections
+            sections: get().sections,
+            title: landing.title,
+            slug: landing.slug,
+            lazy_load: landing.lazy_load !== undefined ? landing.lazy_load : true,
+            masking: landing.masking !== undefined ? landing.masking : false,
+            custom_css: landing.custom_css || ''
           })
         });
 
@@ -288,6 +293,19 @@ export const useStore = create((set, get) => ({
     }, 1500); // Debounce save for 1.5 seconds
 
     set({ autosaveTimer: timer });
+  },
+
+  updateLandingMeta: (fields) => {
+    set(state => {
+      if (!state.selectedLanding) return {};
+      return {
+        selectedLanding: {
+          ...state.selectedLanding,
+          ...fields
+        }
+      };
+    });
+    get().triggerAutosave();
   },
 
   // Publish Page
@@ -343,6 +361,37 @@ export const useStore = create((set, get) => ({
       }
     } catch (err) {
       console.error('Error fetching images:', err);
+    }
+  },
+
+  uploadProjectAsset: async (projectId, file) => {
+    try {
+      // 1. Upload to Firebase Storage
+      const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+      const assetRef = ref(storage, `project-assets/${projectId}/${filename}`);
+      
+      await uploadBytes(assetRef, file);
+      const downloadUrl = await getDownloadURL(assetRef);
+      
+      // 2. Register in Supabase backend
+      const response = await fetch('/api/ai/upload-asset', {
+        method: 'POST',
+        headers: getHeaders(get().token),
+        body: JSON.stringify({ projectId, imageUrl: downloadUrl })
+      });
+      const data = await response.json();
+      
+      if (response.ok) {
+        set(state => ({
+          generatedImages: [data, ...state.generatedImages]
+        }));
+        return data;
+      } else {
+        alert(data.error || 'Error al registrar la imagen subida en la base de datos');
+      }
+    } catch (err) {
+      console.error('Error uploading project asset:', err);
+      alert('Error al subir el archivo');
     }
   },
 

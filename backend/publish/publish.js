@@ -315,6 +315,8 @@ function compileLandingHtml(landing, sections) {
     }
   </style>
 
+  // Open Graph
+  let html = `
   <!-- Open Graph -->
   <meta property="og:title" content="${landing.seo_title || landing.title}">
   <meta property="og:description" content="${landing.seo_description || ''}">
@@ -329,6 +331,29 @@ function compileLandingHtml(landing, sections) {
       "description": "${landing.seo_description || ''}"
     }
   </script>
+  
+  <!-- Custom CSS -->
+  ${landing.custom_css ? `<style>${landing.custom_css}</style>` : ''}
+  
+  <!-- Page Copy Masking -->
+  ${landing.masking ? `
+  <style>
+    body {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+  </style>
+  <script>
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('keydown', e => {
+      if (e.ctrlKey && (e.key === 'c' || e.key === 'u' || e.key === 'i' || e.key === 's')) {
+        e.preventDefault();
+      }
+    });
+  </script>
+  ` : ''}
 </head>
 <body class="text-slate-800 antialiased">
 
@@ -338,18 +363,22 @@ function compileLandingHtml(landing, sections) {
     </main>
 
     <!-- Floating CTA Bar -->
+    ${(landing.floating_cta_active === undefined || landing.floating_cta_active) ? `
     <div class="cta-floating-container flex items-center justify-center">
       <a href="#offer" class="w-full text-center py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-sm tracking-wide shadow-md transition-all duration-300 transform active:scale-95 anim-shake">
-        ¡PEDIR CON DESCUENTO!
+        ${landing.floating_cta_text || '¡PEDIR CON DESCUENTO!'}
       </a>
     </div>
+    ` : ''}
 
     <!-- Floating WhatsApp Button -->
-    <a href="https://wa.me/573242035307?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20este%20producto." target="_blank" rel="noopener noreferrer" aria-label="Contactar por WhatsApp" class="fixed bottom-24 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-green-500 shadow-xl transition-transform hover:scale-110 hover:bg-green-600 active:scale-95">
+    ${(landing.whatsapp_active === undefined || landing.whatsapp_active) ? `
+    <a href="https://wa.me/${landing.whatsapp_phone || '573242035307'}?text=${encodeURIComponent(landing.whatsapp_text || 'Hola, quiero información sobre este producto.')}" target="_blank" rel="noopener noreferrer" aria-label="Contactar por WhatsApp" class="fixed bottom-24 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-green-500 shadow-xl transition-transform hover:scale-110 hover:bg-green-600 active:scale-95">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="h-7 w-7 fill-white">
         <path d="M16.004 0h-.008C7.174 0 0 7.176 0 16c0 3.5 1.132 6.742 3.052 9.376L1.054 31.28l6.156-1.968C9.758 30.98 12.762 32 16.004 32 24.826 32 32 24.822 32 16S24.826 0 16.004 0zm9.35 22.606c-.392 1.106-1.94 2.024-3.186 2.292-.854.182-1.968.326-5.72-1.23-4.802-1.99-7.892-6.86-8.132-7.178-.23-.318-1.938-2.58-1.938-4.922 0-2.342 1.228-3.494 1.664-3.972.392-.43 1.034-.612 1.648-.612.198 0 .376.01.536.018.478.02.716.048 1.032.796.392.934 1.348 3.276 1.466 3.514.12.238.24.556.08.874-.148.326-.278.47-.516.742-.238.272-.464.48-.702.772-.216.256-.46.53-.196.99.264.452 1.174 1.934 2.52 3.134 1.734 1.544 3.194 2.024 3.648 2.248.354.178.776.138 1.052-.158.348-.376.778-.998 1.216-1.612.31-.438.702-.494 1.094-.334.398.152 2.526 1.19 2.958 1.408.432.218.72.326.826.508.104.182.104 1.062-.288 2.168z"></path>
       </svg>
     </a>
+    ` : ''}
 
     <footer class="py-12 bg-white border-t border-slate-100 text-center text-slate-400 text-xs">
       <p>&copy; ${new Date().getFullYear()} ${landing.title}. Todos los derechos reservados.</p>
@@ -382,6 +411,11 @@ function compileLandingHtml(landing, sections) {
 </body>
 </html>
   `;
+
+  if (landing.lazy_load === false) {
+    html = html.replace(/loading="lazy"/g, 'loading="eager"');
+  }
+  return html;
 }
 
 /**

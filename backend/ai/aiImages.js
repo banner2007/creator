@@ -724,6 +724,52 @@ router.get('/project/:projectId', requireAuth, async (req, res) => {
 });
 
 /**
+ * @route   POST /api/ai/upload-asset
+ * @desc    Save manually uploaded image URL to project assets
+ */
+router.post('/upload-asset', requireAuth, async (req, res) => {
+  try {
+    const { projectId, imageUrl } = req.body;
+    if (!projectId || !imageUrl) {
+      return res.status(400).json({ error: 'projectId and imageUrl are required.' });
+    }
+
+    // Verify project ownership
+    const { data: project } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('id', projectId)
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (!project) {
+      return res.status(403).json({ error: 'Access denied: Project does not belong to user.' });
+    }
+
+    const { data: record, error } = await supabase
+      .from('ai_images')
+      .insert({
+        project_id: projectId,
+        prompt: 'Subida localmente',
+        model: 'upload',
+        resolution: 'original',
+        image_url: imageUrl
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(500).json({ error: `Fallo al registrar imagen: ${error.message}` });
+    }
+
+    return res.status(201).json(record);
+  } catch (err) {
+    console.error('Upload asset route error:', err);
+    return res.status(500).json({ error: 'Error interno al registrar el asset.' });
+  }
+});
+
+/**
  * @route   POST /api/ai/remove-bg
  * @desc    Mock background removal
  */

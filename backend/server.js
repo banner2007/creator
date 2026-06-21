@@ -121,6 +121,12 @@ app.use((err, req, res, next) => {
 });
 
 // Start Server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`[Creator Shopy] Server running on http://localhost:${PORT}`);
+  try {
+    const { runMigration } = await import('./migrate.js');
+    await runMigration();
+  } catch (err) {
+    console.error('Failed to run migration:', err);
+  }
 });

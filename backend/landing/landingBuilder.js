@@ -28,7 +28,16 @@ const saveSectionsSchema = z.object({
   sections: z.array(sectionSchema),
   title: z.string().optional(),
   seo_title: z.string().optional(),
-  seo_description: z.string().optional()
+  seo_description: z.string().optional(),
+  slug: z.string().optional(),
+  lazy_load: z.boolean().optional(),
+  masking: z.boolean().optional(),
+  custom_css: z.string().nullable().optional(),
+  whatsapp_phone: z.string().optional(),
+  whatsapp_text: z.string().optional(),
+  whatsapp_active: z.boolean().optional(),
+  floating_cta_text: z.string().optional(),
+  floating_cta_active: z.boolean().optional()
 });
 
 // Seed default sections
@@ -267,17 +276,41 @@ router.put('/:id', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Access denied: Landing page does not belong to user.' });
     }
 
-    // Update metadata (Title/SEO)
+    // Update metadata (Title/SEO/custom options)
     const updateMeta = {};
     if (validated.title) updateMeta.title = validated.title;
     if (validated.seo_title) updateMeta.seo_title = validated.seo_title;
     if (validated.seo_description) updateMeta.seo_description = validated.seo_description;
+    
+    const extraMeta = {};
+    if (validated.slug) extraMeta.slug = validated.slug;
+    if (validated.lazy_load !== undefined) extraMeta.lazy_load = validated.lazy_load;
+    if (validated.masking !== undefined) extraMeta.masking = validated.masking;
+    if (validated.custom_css !== undefined) extraMeta.custom_css = validated.custom_css;
+    if (validated.whatsapp_phone !== undefined) extraMeta.whatsapp_phone = validated.whatsapp_phone;
+    if (validated.whatsapp_text !== undefined) extraMeta.whatsapp_text = validated.whatsapp_text;
+    if (validated.whatsapp_active !== undefined) extraMeta.whatsapp_active = validated.whatsapp_active;
+    if (validated.floating_cta_text !== undefined) extraMeta.floating_cta_text = validated.floating_cta_text;
+    if (validated.floating_cta_active !== undefined) extraMeta.floating_cta_active = validated.floating_cta_active;
 
-    if (Object.keys(updateMeta).length > 0) {
-      await supabase
+    const fullMeta = { ...updateMeta, ...extraMeta };
+    if (Object.keys(fullMeta).length > 0) {
+      const { error: updateError } = await supabase
         .from('landing_pages')
-        .update(updateMeta)
+        .update(fullMeta)
         .eq('id', id);
+
+      if (updateError) {
+        console.warn('Update with new columns failed, retrying with core columns only:', updateError.message);
+        // Retry with only core columns in case migration hasn't been run yet
+        if (Object.keys(updateMeta).length > 0) {
+          const { error: retryError } = await supabase
+            .from('landing_pages')
+            .update(updateMeta)
+            .eq('id', id);
+          if (retryError) throw retryError;
+        }
+      }
     }
 
     // Update sections:
