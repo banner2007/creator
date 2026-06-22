@@ -47,6 +47,10 @@ export default function BuilderPage() {
   const [activeImageSlot, setActiveImageSlot] = useState(null); // { sectionIdx, field: 'coverImage' } or { sectionIdx, field: 'images', imageIdx: 0 }
   const [isUploading, setIsUploading] = useState(false);
 
+  // Drag and drop states
+  const [draggedIdx, setDraggedIdx] = useState(null);
+  const [dragOverIdx, setDragOverIdx] = useState(null);
+
   // AI SEO State
   const [seoModal, setSeoModal] = useState(false);
   const [seoTitle, setSeoTitle] = useState('');
@@ -861,10 +865,60 @@ export default function BuilderPage() {
                     <div 
                       key={idx} 
                       onClick={(e) => { e.stopPropagation(); setActiveSectionIdx(idx); }}
-                      className={`relative group border-2 transition-all cursor-pointer ${
-                        activeSectionIdx === idx ? 'border-emerald-500 z-10' : 'border-transparent hover:border-purple-500/40'
+                      draggable={true}
+                      onDragStart={(e) => {
+                        setDraggedIdx(idx);
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', idx);
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        if (dragOverIdx !== idx) {
+                          setDragOverIdx(idx);
+                        }
+                      }}
+                      onDragLeave={() => {
+                        if (dragOverIdx === idx) {
+                          setDragOverIdx(null);
+                        }
+                      }}
+                      onDragEnd={() => {
+                        setDraggedIdx(null);
+                        setDragOverIdx(null);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (draggedIdx !== null && draggedIdx !== idx) {
+                          reorderSections(draggedIdx, idx);
+                        }
+                        setDraggedIdx(null);
+                        setDragOverIdx(null);
+                      }}
+                      className={`relative group border-2 transition-all pointer-events-auto cursor-grab active:cursor-grabbing ${
+                        draggedIdx === idx 
+                          ? 'opacity-30 scale-95 border-purple-500/30' 
+                          : dragOverIdx === idx 
+                            ? 'border-dashed border-purple-500 bg-purple-500/[0.03] scale-[1.01] shadow-xl z-20' 
+                            : activeSectionIdx === idx 
+                              ? 'border-emerald-500 z-10' 
+                              : 'border-transparent hover:border-purple-500/40'
                       }`}
                     >
+                      {/* Floating delete button (X) */}
+                      <button 
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm('¿Estás seguro de que deseas eliminar este bloque de la página?')) {
+                            removeSection(idx);
+                          }
+                        }}
+                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-lg border border-red-700/30 flex items-center justify-center transition-all hover:scale-110 opacity-0 group-hover:opacity-100 z-30 pointer-events-auto"
+                        title="Eliminar sección"
+                      >
+                        <X className="w-3.5 h-3.5 stroke-[2.5]" />
+                      </button>
+
                       {/* Section tag badge */}
                       <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-slate-900/80 text-[8px] font-mono text-slate-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
                         {sec.type}
