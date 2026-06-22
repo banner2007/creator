@@ -1389,16 +1389,6 @@ export default function BuilderPage() {
 
               {sections[activeSectionIdx].type === 'gallery' && (
                 <div className="space-y-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs text-slate-400 font-semibold">Título de la Galería</label>
-                    <input 
-                      type="text" 
-                      className="glass-input text-xs" 
-                      value={sections[activeSectionIdx].content_json.title || ''}
-                      onChange={e => updateSectionContent(activeSectionIdx, { title: e.target.value })}
-                    />
-                  </div>
-                  
                   {/* Mapping gallery items */}
                   <div className="space-y-3 border-t border-white/5 pt-3">
                     <span className="text-xs font-semibold text-slate-400">Imágenes (Haz clic para cambiar)</span>
