@@ -904,20 +904,63 @@ export default function BuilderPage() {
                               : 'border-transparent hover:border-purple-500/40'
                       }`}
                     >
-                      {/* Floating delete button (X) */}
-                      <button 
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm('¿Estás seguro de que deseas eliminar este bloque de la página?')) {
-                            removeSection(idx);
-                          }
-                        }}
-                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-lg border border-red-700/30 flex items-center justify-center transition-all hover:scale-110 opacity-0 group-hover:opacity-100 z-30 pointer-events-auto"
-                        title="Eliminar sección"
-                      >
-                        <X className="w-3.5 h-3.5 stroke-[2.5]" />
-                      </button>
+                      {/* Floating Section Toolbar */}
+                      <div className={`absolute top-2 left-1/2 -translate-x-1/2 bg-slate-950/90 backdrop-blur border border-white/10 rounded-full px-2 py-1 flex items-center gap-1 shadow-lg transition-all duration-200 z-30 pointer-events-auto ${
+                        activeSectionIdx === idx ? 'opacity-100 scale-100' : 'opacity-0 group-hover:opacity-100 scale-95 pointer-events-none group-hover:pointer-events-auto'
+                      }`}>
+                        {/* Subir */}
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (idx > 0) reorderSections(idx, idx - 1);
+                          }}
+                          className={`p-1.5 rounded-full flex items-center justify-center transition-all ${
+                            idx === 0 
+                              ? 'text-slate-600 cursor-not-allowed' 
+                              : 'text-slate-300 hover:text-white hover:bg-white/10 active:scale-90'
+                          }`}
+                          title="Subir bloque"
+                        >
+                          <ArrowUp className="w-3 h-3 stroke-[2.5]" />
+                        </button>
+
+                        {/* Bajar */}
+                        <button
+                          type="button"
+                          disabled={idx === sections.length - 1}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (idx < sections.length - 1) reorderSections(idx, idx + 1);
+                          }}
+                          className={`p-1.5 rounded-full flex items-center justify-center transition-all ${
+                            idx === sections.length - 1 
+                              ? 'text-slate-600 cursor-not-allowed' 
+                              : 'text-slate-300 hover:text-white hover:bg-white/10 active:scale-90'
+                          }`}
+                          title="Bajar bloque"
+                        >
+                          <ArrowDown className="w-3 h-3 stroke-[2.5]" />
+                        </button>
+
+                        <div className="w-[1px] h-3.5 bg-white/10 mx-0.5"></div>
+
+                        {/* Eliminar */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm('¿Estás seguro de que deseas eliminar este bloque de la página?')) {
+                              removeSection(idx);
+                            }
+                          }}
+                          className="p-1.5 rounded-full text-red-400 hover:text-red-300 hover:bg-red-500/10 active:scale-90 flex items-center justify-center transition-all"
+                          title="Eliminar bloque"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
 
                       {/* Section tag badge */}
                       <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-slate-900/80 text-[8px] font-mono text-slate-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
