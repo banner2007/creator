@@ -163,7 +163,6 @@ function renderSection(section) {
       return `
         <section class="py-6 bg-white border-b border-slate-100">
           <div class="max-w-xl mx-auto">
-            ${content.title ? `<h2 class="text-lg font-black text-center text-slate-900 mb-6 px-6">${content.title}</h2>` : ''}
             <div class="grid grid-cols-1 gap-0">
               ${images.filter(img => img).map(img => `
                 <div class="bg-white overflow-hidden">

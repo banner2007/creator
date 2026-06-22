@@ -1107,7 +1107,6 @@ export default function BuilderPage() {
 
                       {sec.type === 'gallery' && (
                         <div className="py-6 bg-white border-b border-slate-100">
-                          {sec.content_json.title && <h3 className="font-bold text-center text-slate-950 mb-4 px-6 text-sm">{sec.content_json.title}</h3>}
                           <div className="grid grid-cols-1 gap-0 max-w-md mx-auto">
                             {(sec.content_json.images || []).filter(img => img).map((img, i) => (
                               <div key={i} className="bg-white overflow-hidden">
