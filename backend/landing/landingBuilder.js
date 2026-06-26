@@ -281,6 +281,51 @@ router.get('/:id', requireAuth, async (req, res) => {
 });
 
 /**
+ * @route   DELETE /api/landing/:id
+ * @desc    Delete a landing page permanently
+ */
+router.delete('/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Verify ownership of the project that contains this landing page
+    const { data: landing, error: findError } = await supabase
+      .from('landing_pages')
+      .select('id, project_id')
+      .eq('id', id)
+      .single();
+
+    if (findError || !landing) {
+      return res.status(404).json({ error: 'Landing page not found.' });
+    }
+
+    const { data: project, error: pError } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('id', landing.project_id)
+      .eq('user_id', userId)
+      .single();
+
+    if (pError || !project) {
+      return res.status(403).json({ error: 'Access denied: Landing page does not belong to user.' });
+    }
+
+    const { error } = await supabase
+      .from('landing_pages')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    return res.json({ success: true, message: 'Landing page deleted successfully.' });
+  } catch (err) {
+    console.error('Delete landing error:', err);
+    return res.status(500).json({ error: 'Internal server error deleting landing page.' });
+  }
+});
+
+/**
  * @route   PUT /api/landing/:id
  * @desc    Save/Autosave landing page sections and SEO details
  */

@@ -17,7 +17,8 @@ export default function Dashboard() {
     createLanding,
     selectLanding,
     fetchLandings,
-    deleteProject
+    deleteProject,
+    deleteLanding
   } = useStore();
 
   // Local State
@@ -55,6 +56,15 @@ export default function Dashboard() {
     if (confirmDelete) {
       setLoading(true);
       await deleteProject(selectedProject.id);
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteLanding = async (id, title) => {
+    const confirmDelete = confirm(`¿Estás seguro de que deseas eliminar permanentemente la landing page "${title}"?\n\nEsta acción no se puede deshacer.`);
+    if (confirmDelete) {
+      setLoading(true);
+      await deleteLanding(id);
       setLoading(false);
     }
   };
@@ -275,6 +285,14 @@ export default function Dashboard() {
                           title="Duplicar Página"
                         >
                           <Copy class="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteLanding(landing.id, landing.title)}
+                          disabled={loading}
+                          class="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all inline-flex disabled:opacity-50"
+                          title="Eliminar Página"
+                        >
+                          <Trash2 class="w-4 h-4" />
                         </button>
                       </td>
                     </tr>

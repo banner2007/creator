@@ -252,6 +252,30 @@ export const useStore = create((set, get) => ({
     }
   },
 
+  deleteLanding: async (landingId) => {
+    try {
+      const response = await fetch(`/api/landing/${landingId}`, {
+        method: 'DELETE',
+        headers: getHeaders(get().token)
+      });
+      if (response.ok) {
+        set(state => ({
+          landings: state.landings.filter(l => l.id !== landingId),
+          selectedLanding: state.selectedLanding?.id === landingId ? null : state.selectedLanding,
+          sections: state.selectedLanding?.id === landingId ? [] : state.sections
+        }));
+        return true;
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Error al eliminar la landing page');
+      }
+    } catch (err) {
+      console.error('Error deleting landing:', err);
+      alert('Error de red al eliminar la landing page');
+    }
+    return false;
+  },
+
   // Editor Actions
   setSections: (sections) => {
     set({ sections });
