@@ -7,6 +7,42 @@ import {
   Sliders, Layers, MousePointer, Upload, FolderTree, Code, Shield, ShieldOff, Zap, X, PlusCircle, Star, Copy, ExternalLink
 } from 'lucide-react';
 
+  const getSectionTypeNameSpanish = (type) => {
+    const map = {
+      hero: 'Hero / Portada',
+      offer: 'Oferta',
+      benefits: 'Beneficios',
+      comparison: 'Tabla Comparativa',
+      faq: 'Preguntas Frecuentes',
+      cta: 'Imagen + Botón',
+      gallery: 'Galería',
+      reviews: 'Testimonios'
+    };
+    return map[type] || type;
+  };
+
+  const getMatchingImageForSection = (sectionType, generatedImagesList) => {
+    if (!generatedImagesList || generatedImagesList.length === 0) return null;
+    
+    let possibleKeywords = [];
+    if (sectionType === 'hero') possibleKeywords = ['hero'];
+    else if (sectionType === 'offer') possibleKeywords = ['oferta'];
+    else if (sectionType === 'benefits') possibleKeywords = ['beneficios'];
+    else if (sectionType === 'comparison') possibleKeywords = ['tabla-comparativa', 'comparison'];
+    else if (sectionType === 'faq') possibleKeywords = ['preguntas-frecuentes', 'faq'];
+    else if (sectionType === 'reviews') possibleKeywords = ['testimonios', 'reviews'];
+    else if (sectionType === 'cta') possibleKeywords = ['cta', 'antes-despues', 'prueba-autoridad', 'modo-uso', 'logistica'];
+    
+    for (const kw of possibleKeywords) {
+      const found = generatedImagesList.find(img => {
+        const promptLower = (img.prompt || '').toLowerCase();
+        return promptLower.includes(`[template: ${kw}`) || promptLower.includes(`/${kw}_`) || promptLower.includes(`\\${kw}_`);
+      });
+      if (found) return found.image_url;
+    }
+    return null;
+  };
+
 export default function BuilderPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -50,6 +86,42 @@ export default function BuilderPage() {
   // Drag and drop states
   const [draggedIdx, setDraggedIdx] = useState(null);
   const [dragOverIdx, setDragOverIdx] = useState(null);
+
+  const selectAndAutoPullSection = (idx) => {
+    setActiveSectionIdx(idx);
+    const section = sections[idx];
+    if (!section) return;
+    
+    if (section.type === 'gallery') {
+      const hasPlaceholderImages = !section.content_json.images || 
+        section.content_json.images.length === 0 ||
+        section.content_json.images.every(img => img.includes('unsplash.com') || img.includes('placeholder'));
+      
+      if (hasPlaceholderImages) {
+        const matchingUrls = (generatedImages || [])
+          .filter(img => {
+            const promptLower = (img.prompt || '').toLowerCase();
+            return promptLower.includes('[template: gallery') || promptLower.includes('gallery_');
+          })
+          .map(img => img.image_url);
+        
+        if (matchingUrls.length > 0) {
+          updateSectionContent(idx, { images: matchingUrls });
+        }
+      }
+    } else {
+      const hasPlaceholder = !section.content_json.coverImage || 
+        section.content_json.coverImage.includes('unsplash.com') ||
+        section.content_json.coverImage.includes('placeholder');
+      
+      if (hasPlaceholder) {
+        const matchingUrl = getMatchingImageForSection(section.type, generatedImages);
+        if (matchingUrl) {
+          updateSectionContent(idx, { coverImage: matchingUrl });
+        }
+      }
+    }
+  };
 
   // AI SEO State
   const [seoModal, setSeoModal] = useState(false);
@@ -492,14 +564,14 @@ export default function BuilderPage() {
                         {sections.map((sec, idx) => (
                           <div 
                             key={idx}
-                            onClick={() => setActiveSectionIdx(idx)}
+                            onClick={() => selectAndAutoPullSection(idx)}
                             className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${
                               activeSectionIdx === idx 
                                 ? 'bg-purple-600/10 border-purple-500/40 text-purple-200 shadow-md' 
                                 : 'bg-white/[0.01] border-white/5 hover:bg-white/5 text-slate-400 hover:text-slate-200'
                             }`}
                           >
-                            <span className="text-xs font-semibold capitalize font-mono">{idx + 1}. {sec.type}</span>
+                            <span className="text-xs font-semibold capitalize font-mono">{idx + 1}. {getSectionTypeNameSpanish(sec.type)}</span>
                             
                             {/* Ordering / Deleting Buttons */}
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -537,13 +609,17 @@ export default function BuilderPage() {
                   <div className="space-y-3">
                     <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 block">Agregar Nuevo Bloque</span>
                     <div className="grid grid-cols-2 gap-2.5">
-                      {['hero', 'benefits', 'offer', 'reviews', 'faq', 'gallery'].map(type => (
+                      {['hero', 'benefits', 'offer', 'reviews', 'faq', 'gallery', 'comparison', 'cta'].map(type => (
                         <button
                           key={type}
-                          onClick={() => addSection(type)}
-                          className="px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/5 transition-all text-left text-xs capitalize text-slate-300 hover:text-white font-medium flex items-center justify-between"
+                          onClick={() => {
+                            addSection(type);
+                            const newIdx = sections.length;
+                            setTimeout(() => selectAndAutoPullSection(newIdx), 150);
+                          }}
+                          className="px-3 py-2.5 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/5 transition-all text-left text-xs text-slate-300 hover:text-white font-medium flex items-center justify-between"
                         >
-                          <span>{type}</span>
+                          <span>{getSectionTypeNameSpanish(type)}</span>
                           <Plus className="w-3.5 h-3.5 text-slate-500 group-hover:text-white" />
                         </button>
                       ))}
@@ -780,7 +856,7 @@ export default function BuilderPage() {
                       sections.map((sec, idx) => (
                         <div
                           key={idx}
-                          onClick={() => setActiveSectionIdx(idx)}
+                          onClick={() => selectAndAutoPullSection(idx)}
                           className={`p-3 rounded-xl text-xs font-mono flex items-center justify-between cursor-pointer border transition-all ${
                             activeSectionIdx === idx
                               ? 'bg-purple-600/15 border-purple-500/30 text-purple-200 shadow-md'
@@ -789,9 +865,9 @@ export default function BuilderPage() {
                         >
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] text-slate-600">#{idx + 1}</span>
-                            <span className="capitalize">{sec.type}</span>
+                            <span>{getSectionTypeNameSpanish(sec.type)}</span>
                           </div>
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-950 border border-white/5 text-slate-500 uppercase font-mono">{sec.type}</span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-950 border border-white/5 text-slate-500 uppercase font-mono">{getSectionTypeNameSpanish(sec.type)}</span>
                         </div>
                       ))
                     )}
@@ -864,7 +940,7 @@ export default function BuilderPage() {
                   {sections.map((sec, idx) => (
                     <div 
                       key={idx} 
-                      onClick={(e) => { e.stopPropagation(); setActiveSectionIdx(idx); }}
+                      onClick={(e) => { e.stopPropagation(); selectAndAutoPullSection(idx); }}
                       draggable={true}
                       onDragStart={(e) => {
                         setDraggedIdx(idx);
@@ -964,7 +1040,7 @@ export default function BuilderPage() {
 
                       {/* Section tag badge */}
                       <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-slate-900/80 text-[8px] font-mono text-slate-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
-                        {sec.type}
+                        {getSectionTypeNameSpanish(sec.type)}
                       </span>
 
                       {/* Render visual layouts based on type */}
@@ -1194,7 +1270,7 @@ export default function BuilderPage() {
           ) : (
             <div className="space-y-6">
               <div className="flex justify-between items-center pb-4 border-b border-white/5">
-                <h4 className="font-bold text-sm capitalize text-slate-200">Ajustes: {sections[activeSectionIdx].type}</h4>
+                <h4 className="font-bold text-sm capitalize text-slate-200">Ajustes: {getSectionTypeNameSpanish(sections[activeSectionIdx].type)}</h4>
                 <button 
                   onClick={() => setActiveSectionIdx(null)}
                   className="text-xs text-slate-400 hover:text-white"

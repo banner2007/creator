@@ -22,6 +22,8 @@ lerna-debug.log*
 # Operating System Files
 .DS_Store
 Thumbs.db
+desktop.ini
+Desktop.ini
 
 # IDEs and editors
 .idea/

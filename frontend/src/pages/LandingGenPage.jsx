@@ -742,6 +742,22 @@ export default function LandingGenPage() {
           setBgColor(data.bgColor || '#0f172a');
           setSalesAngles(data.salesAngles || []);
           setSelectedAngles(data.selectedAngles || {});
+
+          // Restore generic creator settings
+          setSelectedTemplate(data.selectedTemplate || '');
+          setCustomImage(data.customImage || '');
+          setFormat(data.format || '16:9');
+          setLanguage(data.language || 'es');
+          setEngine(data.engine || 'kie-ai');
+          setCalidad(data.calidad || 'medio');
+
+          // Restore temporary registration details if it's a new product
+          if (selectedProductForGen.id === 'new') {
+            setNewProdName(data.newProdName || '');
+            setNewProdPrice(data.newProdPrice || '');
+            setNewProdCategory(data.newProdCategory || '');
+            setNewProdDescription(data.newProdDescription || '');
+          }
         } catch (e) {
           console.error("Error parsing saved personalization data:", e);
         }
@@ -764,6 +780,22 @@ export default function LandingGenPage() {
         setBgColor('#0f172a');
         setSalesAngles([]);
         setSelectedAngles({});
+
+        // Reset generic creator settings
+        setSelectedTemplate('');
+        setCustomImage('');
+        setFormat('16:9');
+        setLanguage('es');
+        setEngine('kie-ai');
+        setCalidad('medio');
+
+        // Reset temporary registration details if it's a new product
+        if (selectedProductForGen.id === 'new') {
+          setNewProdName('');
+          setNewProdPrice('');
+          setNewProdCategory('');
+          setNewProdDescription('');
+        }
       }
       lastLoadedProductIdRef.current = selectedProductForGen.id;
     }
@@ -789,7 +821,21 @@ export default function LandingGenPage() {
         customStyleEnabled,
         bgColor,
         salesAngles,
-        selectedAngles
+        selectedAngles,
+
+        // Generic creator settings
+        selectedTemplate,
+        customImage,
+        format,
+        language,
+        engine,
+        calidad,
+
+        // Temporary registration details if it's a new product
+        newProdName: selectedProductForGen.id === 'new' ? newProdName : '',
+        newProdPrice: selectedProductForGen.id === 'new' ? newProdPrice : '',
+        newProdCategory: selectedProductForGen.id === 'new' ? newProdCategory : '',
+        newProdDescription: selectedProductForGen.id === 'new' ? newProdDescription : ''
       };
       localStorage.setItem(`landing_personalization_${selectedProductForGen.id}`, JSON.stringify(data));
     }
@@ -811,7 +857,21 @@ export default function LandingGenPage() {
     customStyleEnabled,
     bgColor,
     salesAngles,
-    selectedAngles
+    selectedAngles,
+
+    // Dependencies for creator settings
+    selectedTemplate,
+    customImage,
+    format,
+    language,
+    engine,
+    calidad,
+
+    // Dependencies for temporary registration details
+    newProdName,
+    newProdPrice,
+    newProdCategory,
+    newProdDescription
   ]);
   const handleGenerate = async (e) => {
     e.preventDefault();
@@ -928,8 +988,11 @@ export default function LandingGenPage() {
       promptText += anglesPromptPart;
     }
 
-    // Append metadata tag with product ID
+    // Append metadata tag with product ID and template/category
     promptText += ` [product_id: ${currentProduct.id}]`;
+    if (selectedTemplate) {
+      promptText += ` [template: ${selectedTemplate}]`;
+    }
 
     // Find the first valid product image URL (uploaded or cover image)
     const placeholderUrl = 'images.unsplash.com/photo-1523275335684-37898b6baf30';

@@ -61,7 +61,13 @@ export const useStore = create((set, get) => ({
   
   // App state
   projects: [],
-  selectedProject: null,
+  selectedProject: (() => {
+    try {
+      return JSON.parse(localStorage.getItem('selectedProject')) || null;
+    } catch {
+      return null;
+    }
+  })(),
   landings: [],
   selectedLanding: null,
   sections: [], // Active landing page sections
@@ -112,7 +118,15 @@ export const useStore = create((set, get) => ({
       const data = await response.json();
       if (response.ok) {
         set({ projects: data });
-        if (data.length > 0 && !get().selectedProject) {
+        const savedProject = get().selectedProject;
+        if (savedProject) {
+          const exists = data.find(p => p.id === savedProject.id);
+          if (exists) {
+            get().selectProject(exists);
+            return;
+          }
+        }
+        if (data.length > 0) {
           get().selectProject(data[0]);
         }
       }
@@ -143,6 +157,11 @@ export const useStore = create((set, get) => ({
   },
 
   selectProject: (project) => {
+    if (project) {
+      localStorage.setItem('selectedProject', JSON.stringify(project));
+    } else {
+      localStorage.removeItem('selectedProject');
+    }
     set({ selectedProject: project, landings: [], selectedLanding: null, sections: [] });
     if (project) {
       get().fetchLandings(project.id);
