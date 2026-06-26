@@ -168,6 +168,36 @@ export const useStore = create((set, get) => ({
     }
   },
 
+  deleteProject: async (id) => {
+    try {
+      const response = await fetch(`/api/landing/project/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders(get().token)
+      });
+      if (response.ok) {
+        const updatedProjects = get().projects.filter(p => p.id !== id);
+        set({ projects: updatedProjects });
+        
+        // If the deleted project was the selected one, auto-select another one or set to null
+        if (get().selectedProject?.id === id) {
+          if (updatedProjects.length > 0) {
+            get().selectProject(updatedProjects[0]);
+          } else {
+            get().selectProject(null);
+          }
+        }
+        return true;
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Error al eliminar el proyecto');
+      }
+    } catch (err) {
+      console.error('Error deleting project:', err);
+      alert('Error de red al eliminar el proyecto');
+    }
+    return false;
+  },
+
   // Landing Page Actions
   fetchLandings: async (projectId) => {
     try {

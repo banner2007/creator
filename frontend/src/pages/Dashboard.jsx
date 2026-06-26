@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore.js';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Layout, BarChart3, Globe, Copy, ExternalLink, Calendar, CheckCircle, RefreshCw } from 'lucide-react';
+import { Plus, Layout, BarChart3, Globe, Copy, ExternalLink, Calendar, CheckCircle, RefreshCw, Trash2 } from 'lucide-react';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -16,7 +16,8 @@ export default function Dashboard() {
     selectProject,
     createLanding,
     selectLanding,
-    fetchLandings
+    fetchLandings,
+    deleteProject
   } = useStore();
 
   // Local State
@@ -44,6 +45,18 @@ export default function Dashboard() {
     setNewProjName('');
     setShowProjModal(false);
     setLoading(false);
+  };
+
+  const handleDeleteProject = async () => {
+    if (!selectedProject) return;
+    const confirmDelete = confirm(
+      `¿Estás seguro de que deseas eliminar permanentemente el proyecto "${selectedProject.name}"?\n\nEsta acción no se puede deshacer y eliminará todas sus landing pages, secciones e imágenes asociadas.`
+    );
+    if (confirmDelete) {
+      setLoading(true);
+      await deleteProject(selectedProject.id);
+      setLoading(false);
+    }
   };
 
   const handleCreateLanding = async (e) => {
@@ -110,13 +123,24 @@ export default function Dashboard() {
             <span>Nuevo Proyecto</span>
           </button>
           {selectedProject && (
-            <button 
-              onClick={() => setShowLandingModal(true)}
-              class="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-sm font-semibold transition-all flex items-center gap-2 shadow-lg shadow-purple-500/20"
-            >
-              <Plus class="w-4 h-4" />
-              <span>Nueva Landing</span>
-            </button>
+            <>
+              <button 
+                onClick={() => setShowLandingModal(true)}
+                class="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-sm font-semibold transition-all flex items-center gap-2 shadow-lg shadow-purple-500/20"
+              >
+                <Plus class="w-4 h-4" />
+                <span>Nueva Landing</span>
+              </button>
+              <button 
+                onClick={handleDeleteProject}
+                disabled={loading}
+                class="px-4 py-2.5 rounded-xl border border-red-500/30 bg-red-600/10 hover:bg-red-600/20 text-red-400 text-sm font-semibold transition-all flex items-center gap-2 disabled:opacity-50"
+                title="Eliminar Proyecto Permanentemente"
+              >
+                <Trash2 class="w-4 h-4" />
+                <span>Eliminar Proyecto</span>
+              </button>
+            </>
           )}
         </div>
       </div>

@@ -146,6 +146,41 @@ router.get('/projects', requireAuth, async (req, res) => {
 });
 
 /**
+ * @route   DELETE /api/landing/project/:id
+ * @desc    Delete a project permanently
+ */
+router.delete('/project/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Verify ownership first
+    const { data: existing, error: findError } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (findError || !existing) {
+      return res.status(404).json({ error: 'Project not found or access denied.' });
+    }
+
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    return res.json({ success: true, message: 'Project deleted successfully.' });
+  } catch (err) {
+    console.error('Delete project error:', err);
+    return res.status(500).json({ error: 'Internal server error deleting project.' });
+  }
+});
+
+/**
  * @route   POST /api/landing
  * @desc    Create a new landing page with default sections
  */
