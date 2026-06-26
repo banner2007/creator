@@ -2295,9 +2295,9 @@ export default function LandingGenPage() {
                 e.dataTransfer.setData('text/plain', img.id);
                 e.dataTransfer.effectAllowed = 'move';
               }}
-              className="glass-panel border border-white/10 rounded-2xl overflow-hidden bg-slate-950 group relative aspect-square shadow-md hover:scale-[1.01] transition-transform duration-300 cursor-grab active:cursor-grabbing"
+              className="glass-panel border border-white/10 rounded-2xl overflow-hidden bg-slate-950 p-1 group relative shadow-md hover:scale-[1.01] transition-transform duration-300 cursor-grab active:cursor-grabbing"
             >
-              <img src={img.image_url} alt="Generated landing block" className="w-full h-full object-contain transition-transform group-hover:scale-105 duration-500" />
+              <img src={img.image_url} alt="Generated landing block" className="w-full h-auto rounded-xl block transition-transform group-hover:scale-105 duration-500" />
               
               {/* Image Details Hover Overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-between">
@@ -2437,7 +2437,7 @@ export default function LandingGenPage() {
                         Arrastra imágenes aquí para asignarlas a este ángulo
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 items-start">
                         {groupedBanners[angleTitle].map(img => renderBannerCard(img))}
                       </div>
                     )}
@@ -2489,7 +2489,7 @@ export default function LandingGenPage() {
                         No hay imágenes sin ángulo específico. ¡Arrastra aquí para remover su ángulo!
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 items-start">
                         {ungroupedBanners.map(img => renderBannerCard(img))}
                       </div>
                     )}
