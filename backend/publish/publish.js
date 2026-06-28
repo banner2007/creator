@@ -505,7 +505,10 @@ router.post('/', requireAuth, async (req, res) => {
 
     if (uploadError) {
       console.error('[Publish] Upload failed:', uploadError);
-      return res.status(500).json({ error: 'Failed to upload static file to CDN Storage.' });
+      return res.status(500).json({ 
+        error: 'Failed to upload static file to CDN Storage.',
+        details: uploadError.message || JSON.stringify(uploadError)
+      });
     }
 
     // 5. Update landing page status in DB

@@ -149,7 +149,10 @@ export default function BuilderPage() {
     if (result && !result.error) {
       setPubResult(result);
     } else {
-      alert(result?.error || 'Error al publicar la página');
+      const errorMsg = result?.details 
+        ? `${result.error}\n\nDetalles: ${result.details}` 
+        : (result?.error || 'Error al publicar la página');
+      alert(errorMsg);
     }
     setPublishing(false);
   };
