@@ -323,8 +323,16 @@ export default function BuilderPage() {
             <input
               type="text"
               value={selectedLanding.slug}
-              onChange={e => updateLandingMeta({ slug: e.target.value })}
-              className="bg-transparent text-slate-300 font-mono focus:outline-none max-w-[140px] focus:text-white"
+              onChange={e => {
+                const sanitized = e.target.value
+                  .toLowerCase()
+                  .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                  .replace(/\s+/g, '-')
+                  .replace(/[^a-z0-9-]/g, '');
+                updateLandingMeta({ slug: sanitized });
+              }}
+              className="bg-transparent text-slate-300 font-mono focus:outline-none max-w-[220px] focus:text-white"
+              placeholder="slug-de-la-pagina"
             />
           </div>
         </div>

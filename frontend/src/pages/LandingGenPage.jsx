@@ -579,13 +579,10 @@ export default function LandingGenPage() {
     try {
       const productSlug = selectedProductForGen.name
         .toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
-      const angleSlug = angleTitle
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
-      const slug = `landing-${productSlug}-${angleSlug}-${Date.now().toString().slice(-4)}`;
+      const slug = productSlug;
       const title = `Landing - ${selectedProductForGen.name} (${angleTitle})`;
 
       const createdLanding = await createLanding(selectedProject.id, title, slug);
