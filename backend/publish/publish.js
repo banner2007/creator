@@ -161,7 +161,7 @@ function renderSection(section) {
     case 'gallery':
       const images = content.images || [];
       return `
-        <section class="py-6 bg-white border-b border-slate-100">
+        <section class="py-0 bg-white border-b border-slate-100">
           <div class="max-w-xl mx-auto">
             <div class="grid grid-cols-1 gap-0">
               ${images.filter(img => img).map(img => `

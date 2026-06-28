@@ -219,6 +219,41 @@ export default function BuilderPage() {
     setActiveImageSlot(null);
   };
 
+  // Move gallery image up/down
+  const moveGalleryImage = (idx, direction) => {
+    const activeSection = sections[activeSectionIdx];
+    if (!activeSection || activeSection.type !== 'gallery') return;
+    
+    const list = [...(activeSection.content_json.images || [])];
+    if (direction === 'up' && idx > 0) {
+      const temp = list[idx];
+      list[idx] = list[idx - 1];
+      list[idx - 1] = temp;
+      updateSectionContent(activeSectionIdx, { images: list });
+      
+      if (activeImageSlot && activeImageSlot.sectionIdx === activeSectionIdx && activeImageSlot.field === 'images') {
+        if (activeImageSlot.imageIdx === idx) {
+          setActiveImageSlot({ ...activeImageSlot, imageIdx: idx - 1 });
+        } else if (activeImageSlot.imageIdx === idx - 1) {
+          setActiveImageSlot({ ...activeImageSlot, imageIdx: idx });
+        }
+      }
+    } else if (direction === 'down' && idx < list.length - 1) {
+      const temp = list[idx];
+      list[idx] = list[idx + 1];
+      list[idx + 1] = temp;
+      updateSectionContent(activeSectionIdx, { images: list });
+      
+      if (activeImageSlot && activeImageSlot.sectionIdx === activeSectionIdx && activeImageSlot.field === 'images') {
+        if (activeImageSlot.imageIdx === idx) {
+          setActiveImageSlot({ ...activeImageSlot, imageIdx: idx + 1 });
+        } else if (activeImageSlot.imageIdx === idx + 1) {
+          setActiveImageSlot({ ...activeImageSlot, imageIdx: idx });
+        }
+      }
+    }
+  };
+
   // Direct trigger save
   const handleManualSave = () => {
     useStore.getState().triggerAutosave();
@@ -1182,19 +1217,20 @@ export default function BuilderPage() {
                       )}
 
                       {sec.type === 'gallery' && (
-                        <div className="py-6 bg-white border-b border-slate-100">
+                        <div className="py-0 bg-white border-b border-slate-100">
                           <div className="grid grid-cols-1 gap-0 max-w-md mx-auto">
-                            {(sec.content_json.images || []).filter(img => img).map((img, i) => (
-                              <div key={i} className="bg-white overflow-hidden">
-                                <img src={img} alt="" className="w-full h-auto block" />
-                              </div>
-                            ))}
-                            {(sec.content_json.images || []).filter(img => !img).map((_, i) => (
-                              <div key={i} className="p-6 border border-dashed border-slate-200 m-2 rounded-xl flex items-center justify-center text-slate-400 bg-slate-50 text-xs">
-                                <ImageIcon className="w-5 h-5 mr-1" />
-                                <span>Slot de imagen vacío</span>
-                              </div>
-                            ))}
+                            {(sec.content_json.images || []).map((img, i) => 
+                              img ? (
+                                <div key={i} className="bg-white overflow-hidden">
+                                  <img src={img} alt="" className="w-full h-auto block" />
+                                </div>
+                              ) : (
+                                <div key={i} className="p-6 border border-dashed border-slate-200 m-2 rounded-xl flex items-center justify-center text-slate-400 bg-slate-50 text-xs">
+                                  <ImageIcon className="w-5 h-5 mr-1" />
+                                  <span>Slot de imagen vacío ({i + 1})</span>
+                                </div>
+                              )
+                            )}
                           </div>
                         </div>
                       )}
@@ -1482,26 +1518,61 @@ export default function BuilderPage() {
                             : 'border-white/5'
                         }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-slate-400">Imagen {idx + 1}</span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const list = [...(sections[activeSectionIdx].content_json.images || [])];
-                              list.splice(idx, 1);
-                              updateSectionContent(activeSectionIdx, { images: list });
-                            }}
-                            className="text-[10px] text-red-500 hover:text-red-400 font-bold ml-2"
-                          >
-                            Eliminar
-                          </button>
+                        <div className="flex items-center gap-3">
+                          {/* Reordering buttons */}
+                          <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                moveGalleryImage(idx, 'up');
+                              }}
+                              className="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-all disabled:opacity-25 disabled:hover:bg-transparent"
+                              title="Subir"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx === (sections[activeSectionIdx].content_json.images || []).length - 1}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                moveGalleryImage(idx, 'down');
+                              }}
+                              className="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-all disabled:opacity-25 disabled:hover:bg-transparent"
+                              title="Bajar"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          
+                          <div className="flex flex-col gap-1">
+                            <span className="text-xs font-semibold text-slate-200">Imagen {idx + 1}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const list = [...(sections[activeSectionIdx].content_json.images || [])];
+                                list.splice(idx, 1);
+                                updateSectionContent(activeSectionIdx, { images: list });
+                                if (activeImageSlot && activeImageSlot.sectionIdx === activeSectionIdx && activeImageSlot.field === 'images' && activeImageSlot.imageIdx === idx) {
+                                  setActiveImageSlot(null);
+                                }
+                              }}
+                              className="text-[10px] text-red-500 hover:text-red-400 font-bold flex items-center gap-1 mt-0.5"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Eliminar</span>
+                            </button>
+                          </div>
                         </div>
+                        
                         {img ? (
-                          <img src={img} alt="Thumb" className="w-10 h-10 object-cover rounded-lg border border-white/10" />
+                          <img src={img} alt="Thumb" className="w-12 h-12 object-cover rounded-lg border border-white/10 shadow-inner shrink-0" />
                         ) : (
-                          <div className="w-10 h-10 rounded-lg bg-white/5 border border-dashed border-white/10 flex items-center justify-center text-slate-600">
-                            +
+                          <div className="w-12 h-12 rounded-lg bg-white/5 border border-dashed border-white/10 flex items-center justify-center text-slate-400 shrink-0">
+                            <Plus className="w-4 h-4" />
                           </div>
                         )}
                       </div>
