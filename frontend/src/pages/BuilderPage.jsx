@@ -149,9 +149,15 @@ export default function BuilderPage() {
     if (result && !result.error) {
       setPubResult(result);
     } else {
-      const errorMsg = result?.details 
+      let errorMsg = result?.details 
         ? `${result.error}\n\nDetalles: ${result.details}` 
         : (result?.error || 'Error al publicar la página');
+      
+      if (errorMsg.includes('Invalid session or expired token') || errorMsg.includes('Unauthorized')) {
+        errorMsg = 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.';
+        useStore.getState().logout();
+        navigate('/login');
+      }
       alert(errorMsg);
     }
     setPublishing(false);
