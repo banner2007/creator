@@ -242,12 +242,12 @@ export default function Dashboard() {
                         <div class="font-bold text-slate-200">{landing.title}</div>
                         {landing.published ? (
                           <a 
-                            href={`/published/${landing.slug}`} 
+                            href={`https://shopy.uno/${landing.slug}`} 
                             target="_blank" 
                             rel="noreferrer" 
                             class="text-xs text-purple-400 hover:underline flex items-center gap-1 mt-1"
                           >
-                            <span>{landing.slug}.shopy.uno</span>
+                            <span>shopy.uno/{landing.slug}</span>
                             <ExternalLink class="w-3 h-3" />
                           </a>
                         ) : (

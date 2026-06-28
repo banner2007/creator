@@ -1988,9 +1988,9 @@ export default function BuilderPage() {
             <p className="text-sm text-slate-400 max-w-sm mx-auto mb-6">Tu landing page ya está en vivo y optimizada en la CDN para vender tus productos.</p>
             
             <div className="p-4 rounded-xl bg-purple-600/10 border border-purple-500/20 text-sm font-mono break-all mb-8 flex items-center justify-between gap-2">
-              <span className="text-purple-300">https://{pubResult.domain}</span>
+              <span className="text-purple-300">{pubResult.url}</span>
               <button 
-                onClick={() => { navigator.clipboard.writeText(`https://${pubResult.domain}`); alert('URL copiado'); }}
+                onClick={() => { navigator.clipboard.writeText(pubResult.url); alert('URL copiado'); }}
                 className="p-1 rounded bg-purple-600/25 hover:bg-purple-600/40 text-purple-200 transition-all"
                 title="Copiar URL"
               >

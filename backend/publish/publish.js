@@ -551,6 +551,26 @@ router.post('/', requireAuth, async (req, res) => {
       }
     }
 
+    // 6.5. Trigger WordPress Publish Sync
+    const wpPublishUrl = 'https://shopy.uno/wp-json/creator-shopy/v1/publish';
+    const wpPublishKey = process.env.WORDPRESS_PUBLISH_KEY || 'Ca$79652475';
+    try {
+      console.log(`[Publish] Syncing landing page to WordPress: ${wpPublishUrl}`);
+      await axios.post(wpPublishUrl, {
+        slug: landing.slug,
+        html: minifiedHtml
+      }, {
+        headers: {
+          'Authorization': `Bearer ${wpPublishKey}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000
+      });
+      console.log('[Publish] Successfully synced to WordPress!');
+    } catch (wpErr) {
+      console.error('[Publish] WordPress sync failed:', wpErr.message);
+    }
+
     // 7. Audit log
     await supabaseAdmin.from('audit_logs').insert({
       user_id: req.user.id,
@@ -564,8 +584,8 @@ router.post('/', requireAuth, async (req, res) => {
 
     return res.json({
       success: true,
-      domain: targetDomain,
-      url: `/published/${landing.slug}`,
+      domain: `shopy.uno/${landing.slug}`,
+      url: `https://shopy.uno/${landing.slug}`,
       published_at: pubRecord?.published_at || new Date().toISOString()
     });
   } catch (err) {
