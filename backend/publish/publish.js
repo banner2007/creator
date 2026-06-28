@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { supabase } from '../server.js';
+import { supabase, supabaseAdmin } from '../server.js';
 import { requireAuth } from '../middleware/auth.js';
 import axios from 'axios';
 
@@ -454,7 +454,7 @@ router.post('/', requireAuth, async (req, res) => {
     if (!landingId) return res.status(400).json({ error: 'landingId is required.' });
 
     // 1. Fetch landing details
-    const { data: landing, error: lError } = await supabase
+    const { data: landing, error: lError } = await supabaseAdmin
       .from('landing_pages')
       .select('*')
       .eq('id', landingId)
@@ -465,7 +465,7 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     // Verify project belongs to user
-    const { data: project } = await supabase
+    const { data: project } = await supabaseAdmin
       .from('projects')
       .select('id')
       .eq('id', landing.project_id)
@@ -477,7 +477,7 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     // 2. Fetch all sections
-    const { data: sections, error: sError } = await supabase
+    const { data: sections, error: sError } = await supabaseAdmin
       .from('sections')
       .select('*')
       .eq('landing_id', landingId)
@@ -494,7 +494,7 @@ router.post('/', requireAuth, async (req, res) => {
 
     // 4. Upload to Supabase Storage exports bucket
     const filePath = `pages/${landing.slug}/index.html`;
-    const { data: uploadData, error: uploadError } = await supabase
+    const { data: uploadData, error: uploadError } = await supabaseAdmin
       .storage
       .from('exports')
       .upload(filePath, buffer, {
@@ -512,14 +512,14 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     // 5. Update landing page status in DB
-    await supabase
+    await supabaseAdmin
       .from('landing_pages')
       .update({ published: true })
       .eq('id', landingId);
 
     // Create or update publication record
     const targetDomain = `${landing.slug}.shopy.uno`;
-    const { data: pubRecord, error: pubError } = await supabase
+    const { data: pubRecord, error: pubError } = await supabaseAdmin
       .from('publications')
       .upsert({
         landing_id: landingId,
@@ -552,7 +552,7 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     // 7. Audit log
-    await supabase.from('audit_logs').insert({
+    await supabaseAdmin.from('audit_logs').insert({
       user_id: req.user.id,
       action: 'publish_landing',
       metadata: {
