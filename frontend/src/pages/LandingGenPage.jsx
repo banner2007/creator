@@ -577,11 +577,14 @@ export default function LandingGenPage() {
 
     setIsCreatingLanding(true);
     try {
-      const productSlug = selectedProductForGen.name
+      let productSlug = selectedProductForGen.name
         .toLowerCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
+      if (!productSlug) {
+        productSlug = 'landing-page';
+      }
       const slug = productSlug;
       const title = `Landing - ${selectedProductForGen.name} (${angleTitle})`;
 

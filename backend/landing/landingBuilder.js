@@ -200,20 +200,40 @@ router.post('/', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Access denied: Project does not belong to user.' });
     }
 
-    // Insert landing page metadata
-    const { data: landing, error: lError } = await supabase
-      .from('landing_pages')
-      .insert({
-        project_id: validated.projectId,
-        title: validated.title,
-        slug: validated.slug,
-        seo_title: validated.title,
-        seo_description: `Descubre ${validated.title} al mejor precio.`
-      })
-      .select()
-      .single();
+    // Insert landing page metadata with retry logic for unique slug conflicts
+    let landing = null;
+    let lError = null;
+    let attempts = 0;
+    const baseSlug = validated.slug;
 
-    if (lError) throw lError;
+    while (attempts < 5) {
+      const currentSlug = attempts === 0 ? baseSlug : `${baseSlug}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const { data, error } = await supabase
+        .from('landing_pages')
+        .insert({
+          project_id: validated.projectId,
+          title: validated.title,
+          slug: currentSlug,
+          seo_title: validated.title,
+          seo_description: `Descubre ${validated.title} al mejor precio.`
+        })
+        .select()
+        .single();
+
+      if (!error) {
+        landing = data;
+        break;
+      }
+
+      lError = error;
+      if (error.code === '23505') {
+        attempts++;
+      } else {
+        break; // Throw other database errors
+      }
+    }
+
+    if (lError && !landing) throw lError;
 
     // Seed default sections
     const sectionsToInsert = DEFAULT_SECTIONS.map(sec => ({
