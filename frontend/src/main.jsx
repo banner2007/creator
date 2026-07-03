@@ -3,14 +3,16 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './styles/index.css';
 
-// Global fetch interceptor to route relative API and published calls directly to Render (Auto deploy v2)
+// Global fetch interceptor to dynamically resolve API and published calls to localhost in development,
+// and relative URLs in production (proxied automatically via Firebase Hosting rewrites).
 const originalFetch = window.fetch;
 window.fetch = function (input, init) {
   if (typeof input === 'string') {
-    if (input.startsWith('/api/')) {
-      input = 'https://creator-backend-ar1g.onrender.com' + input;
-    } else if (input.startsWith('/published/')) {
-      input = 'https://creator-backend-ar1g.onrender.com' + input;
+    if (input.startsWith('/api/') || input.startsWith('/published/')) {
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (isLocalhost) {
+        input = 'http://localhost:3000' + input;
+      }
     }
   }
   return originalFetch(input, init);

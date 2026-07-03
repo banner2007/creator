@@ -120,13 +120,24 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong on the server.' });
 });
 
-// Start Server
-app.listen(PORT, async () => {
-  console.log(`[Creator Shopy] Server running on http://localhost:${PORT}`);
-  try {
-    const { runMigration } = await import('./migrate.js');
-    await runMigration();
-  } catch (err) {
-    console.error('Failed to run migration:', err);
-  }
-});
+import { onRequest } from 'firebase-functions/v2/https';
+
+// Export Cloud Function for Firebase (handles all routing under /api)
+export const api = onRequest({
+  cors: true,
+  memory: '512MiB',
+  timeoutSeconds: 60
+}, app);
+
+// Start Server locally (Only when run directly, not in Firebase Functions)
+if (process.env.NODE_ENV !== 'production' && !process.env.FUNCTION_TARGET) {
+  app.listen(PORT, async () => {
+    console.log(`[Creator Shopy] Server running on http://localhost:${PORT}`);
+    try {
+      const { runMigration } = await import('./migrate.js');
+      await runMigration();
+    } catch (err) {
+      console.error('Failed to run migration:', err);
+    }
+  });
+}
