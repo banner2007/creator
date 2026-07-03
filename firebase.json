@@ -19,6 +19,9 @@
   },
   "functions": {
     "source": "backend",
-    "codebase": "default"
+    "codebase": "default",
+    "predeploy": [
+      "powershell -Command \"Copy-Item -Path .env -Destination backend/.env -Force\""
+    ]
   }
 }
