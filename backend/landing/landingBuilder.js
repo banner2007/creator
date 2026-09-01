@@ -19,7 +19,7 @@ const landingSchema = z.object({
 });
 
 const sectionSchema = z.object({
-  type: z.enum(['hero', 'gallery', 'benefits', 'comparison', 'faq', 'offer', 'cta', 'reviews']),
+  type: z.enum(['hero', 'gallery', 'benefits', 'comparison', 'faq', 'offer', 'cta', 'reviews', 'image']),
   content_json: z.record(z.any()),
   position: z.number().int()
 });
