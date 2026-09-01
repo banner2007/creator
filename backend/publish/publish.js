@@ -22,12 +22,31 @@ function renderSection(section) {
   const content = section.content_json || {};
   
   switch (section.type) {
+    case 'image':
+      if (!content.imageUrl) return '';
+      return `
+        <section class="relative w-full overflow-hidden" style="background-color: ${content.bgColor || 'transparent'}; padding: ${content.paddingY || 0}px ${content.paddingX || 0}px; margin: 0; line-height: 0;">
+          <img 
+            src="${content.imageUrl}" 
+            alt="Producto" 
+            class="w-full h-auto block" 
+            loading="lazy" 
+            style="width: 100%; max-width: 100%; display: block; border-radius: ${content.borderRadius || 0}px; margin: 0 auto; box-shadow: ${content.shadow === 'none' ? 'none' : content.shadow === 'Fuerte' ? '0 25px 50px -12px rgba(0, 0, 0, 0.25)' : content.shadow === 'Media' ? '0 10px 15px -3px rgba(0, 0, 0, 0.1)' : content.shadow === 'Suave' ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none'};"
+          />
+          ${content.text ? `
+            <div class="w-full mt-3 px-4" style="color: ${content.textColor || '#000000'}; font-size: ${content.textSize || 16}px; text-align: ${content.align || 'center'}; font-weight: ${content.bold ? 'bold' : 'normal'}; line-height: 1.5;">
+              ${content.text}
+            </div>
+          ` : ''}
+        </section>
+      `;
+
     case 'hero':
       // Support full-bleed image if there is coverImage and no title/subtitle
       if (content.coverImage && !content.title && !content.subtitle) {
         return `
-          <section class="relative bg-white overflow-hidden">
-            <img src="${content.coverImage}" alt="Hero Banner" class="w-full h-auto block" loading="eager" fetchpriority="high">
+          <section class="relative bg-white overflow-hidden" style="margin: 0; line-height: 0;">
+            <img src="${content.coverImage}" alt="Hero Banner" class="w-full h-auto block" style="width: 100%; max-width: 100%; display: block;" loading="eager" fetchpriority="high">
           </section>
         `;
       }
@@ -75,8 +94,8 @@ function renderSection(section) {
             <div class="grid grid-cols-1 gap-4">
               ${items.map(item => `
                 <div class="p-5 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-start gap-4">
-                  <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-4 h-4">
+                  <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0" style="width: 32px; height: 32px; min-width: 32px; min-height: 32px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" width="16" height="16" style="width: 16px; height: 16px; min-width: 16px; min-height: 16px; display: block;" class="w-4 h-4">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
                   </div>
@@ -124,8 +143,8 @@ function renderSection(section) {
                 <ul class="grid grid-cols-1 gap-2.5">
                   ${features.map(f => `
                     <li class="flex items-center text-slate-700 text-xs">
-                      <div class="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mr-2 shrink-0">
-                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                      <div class="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mr-2 shrink-0" style="width: 16px; height: 16px; min-width: 16px; min-height: 16px;">
+                        <svg class="w-2.5 h-2.5" width="10" height="10" style="width: 10px; height: 10px; min-width: 10px; min-height: 10px; display: block;" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
                       </div>
                       <span class="font-medium">${f}</span>
                     </li>
@@ -161,12 +180,12 @@ function renderSection(section) {
     case 'gallery':
       const images = content.images || [];
       return `
-        <section class="py-0 bg-white border-b border-slate-100">
-          <div class="max-w-xl mx-auto">
+        <section class="py-0 bg-white border-b border-slate-100" style="margin: 0; line-height: 0;">
+          <div class="w-full">
             <div class="grid grid-cols-1 gap-0">
               ${images.filter(img => img).map(img => `
-                <div class="bg-white overflow-hidden">
-                  <img src="${img}" alt="Gallería" class="w-full h-auto block" loading="lazy">
+                <div class="bg-white overflow-hidden" style="margin: 0; line-height: 0;">
+                  <img src="${img}" alt="Galería" class="w-full h-auto block" style="width: 100%; max-width: 100%; display: block;" loading="lazy">
                 </div>
               `).join('')}
             </div>
@@ -186,13 +205,13 @@ function renderSection(section) {
                   <div class="mb-4">
                     <div class="flex text-amber-400 gap-0.5 mb-2">
                       ${Array(r.rating || 5).fill('').map(() => `
-                        <svg class="w-4.5 h-4.5 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                        <svg class="w-4.5 h-4.5 fill-current" width="18" height="18" style="width: 18px; height: 18px; display: inline-block;" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
                       `).join('')}
                     </div>
                     <p class="text-slate-700 text-xs italic">"${r.comment || 'Excelente producto'}"</p>
                   </div>
                   <div class="flex items-center gap-2 border-t border-slate-100 pt-3 mt-1">
-                    <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[10px] uppercase">
+                    <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[10px] uppercase" style="width: 28px; height: 28px; min-width: 28px; min-height: 28px;">
                       ${r.name ? r.name.charAt(0) : 'U'}
                     </div>
                     <div>
@@ -215,8 +234,8 @@ function renderSection(section) {
         <section class="py-12 px-6 bg-white text-center border-b border-slate-100">
           <div class="max-w-xl mx-auto space-y-6">
             ${content.coverImage ? `
-              <div class="relative rounded-2xl overflow-hidden shadow-md">
-                <img src="${content.coverImage}" alt="CTA Banner" class="w-full h-auto block" loading="lazy">
+              <div class="relative rounded-2xl overflow-hidden shadow-md" style="line-height: 0;">
+                <img src="${content.coverImage}" alt="CTA Banner" class="w-full h-auto block" style="width: 100%; max-width: 100%; display: block;" loading="lazy">
               </div>
             ` : ''}
             ${content.title ? `<h3 class="text-xl font-bold text-slate-900 leading-tight">${content.title}</h3>` : ''}
@@ -257,14 +276,14 @@ function compileLandingHtml(landing, sections) {
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>${landing.seo_title || landing.title}</title>
   <meta name="description" content="${landing.seo_description || ''}">
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -281,21 +300,40 @@ function compileLandingHtml(landing, sections) {
   </script>
   
   <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       scroll-behavior: smooth;
-      background-color: #eef0f3;
+      background-color: #f1f5f9;
+      color: #1e293b;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    svg {
+      flex-shrink: 0;
     }
 
     /* Mobile-first frame on desktop */
-    @media (min-width: 481px) {
-      .ms-mobile-preview {
-        max-width: 480px;
-        margin: 0 auto;
-        background-color: #ffffff;
-        box-shadow: 0 10px 50px rgba(15, 23, 42, 0.08);
-        min-height: 100vh;
-      }
+    .ms-mobile-preview {
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+      box-shadow: 0 10px 50px rgba(15, 23, 42, 0.08);
     }
 
     @media (max-width: 480px) {
@@ -303,16 +341,16 @@ function compileLandingHtml(landing, sections) {
         background-color: #ffffff;
       }
       .ms-mobile-preview {
-        width: 100%;
-        min-height: 100vh;
+        max-width: 100%;
+        box-shadow: none;
       }
     }
 
     /* Shake Animation for converting CTAs */
     @keyframes cta-shake {
       0%, 100% { transform: scale(1) translateX(0); }
-      10%, 30% { transform: scale(1.02) translateX(-4px); }
-      20%, 40% { transform: scale(1.02) translateX(4px); }
+      10%, 30% { transform: scale(1.02) translateX(-3px); }
+      20%, 40% { transform: scale(1.02) translateX(3px); }
       50% { transform: scale(1) translateX(0); }
     }
 
@@ -326,12 +364,12 @@ function compileLandingHtml(landing, sections) {
       left: 0 !important;
       right: 0 !important;
       bottom: 0 !important;
-      padding: 14px 16px !important;
-      background-color: rgba(255, 255, 255, 0.9) !important;
-      backdrop-filter: blur(8px) !important;
-      border-top: 1px solid rgba(15, 23, 42, 0.06) !important;
+      padding: 12px 16px !important;
+      background-color: rgba(255, 255, 255, 0.95) !important;
+      backdrop-filter: blur(10px) !important;
+      border-top: 1px solid rgba(15, 23, 42, 0.08) !important;
       z-index: 99999 !important;
-      box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
     }
 
     @media (min-width: 481px) {
@@ -391,7 +429,7 @@ function compileLandingHtml(landing, sections) {
     <!-- Floating CTA Bar -->
     ${(landing.floating_cta_active === undefined || landing.floating_cta_active) ? `
     <div class="cta-floating-container flex items-center justify-center">
-      <a href="#offer" class="w-full text-center py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-sm tracking-wide shadow-md transition-all duration-300 transform active:scale-95 anim-shake">
+      <a href="#offer" class="w-full text-center py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-sm tracking-wide shadow-md transition-all duration-300 transform active:scale-95 anim-shake" style="display: block; text-decoration: none;">
         ${landing.floating_cta_text || '¡PEDIR CON DESCUENTO!'}
       </a>
     </div>
@@ -399,8 +437,8 @@ function compileLandingHtml(landing, sections) {
 
     <!-- Floating WhatsApp Button -->
     ${(landing.whatsapp_active === undefined || landing.whatsapp_active) ? `
-    <a href="https://wa.me/${landing.whatsapp_phone || '573242035307'}?text=${encodeURIComponent(landing.whatsapp_text || 'Hola, quiero información sobre este producto.')}" target="_blank" rel="noopener noreferrer" aria-label="Contactar por WhatsApp" class="fixed bottom-24 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-green-500 shadow-xl transition-transform hover:scale-110 hover:bg-green-600 active:scale-95">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="h-7 w-7 fill-white">
+    <a href="https://wa.me/${landing.whatsapp_phone || '573242035307'}?text=${encodeURIComponent(landing.whatsapp_text || 'Hola, quiero información sobre este producto.')}" target="_blank" rel="noopener noreferrer" aria-label="Contactar por WhatsApp" class="fixed bottom-20 right-4 z-50 flex items-center justify-center rounded-full bg-green-500 shadow-xl transition-transform hover:scale-110 hover:bg-green-600 active:scale-95" style="width: 52px; height: 52px; min-width: 52px; min-height: 52px; text-decoration: none;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="26" height="26" style="width: 26px; height: 26px; min-width: 26px; min-height: 26px; display: block;" class="h-6 w-6 fill-white">
         <path d="M16.004 0h-.008C7.174 0 0 7.176 0 16c0 3.5 1.132 6.742 3.052 9.376L1.054 31.28l6.156-1.968C9.758 30.98 12.762 32 16.004 32 24.826 32 32 24.822 32 16S24.826 0 16.004 0zm9.35 22.606c-.392 1.106-1.94 2.024-3.186 2.292-.854.182-1.968.326-5.72-1.23-4.802-1.99-7.892-6.86-8.132-7.178-.23-.318-1.938-2.58-1.938-4.922 0-2.342 1.228-3.494 1.664-3.972.392-.43 1.034-.612 1.648-.612.198 0 .376.01.536.018.478.02.716.048 1.032.796.392.934 1.348 3.276 1.466 3.514.12.238.24.556.08.874-.148.326-.278.47-.516.742-.238.272-.464.48-.702.772-.216.256-.46.53-.196.99.264.452 1.174 1.934 2.52 3.134 1.734 1.544 3.194 2.024 3.648 2.248.354.178.776.138 1.052-.158.348-.376.778-.998 1.216-1.612.31-.438.702-.494 1.094-.334.398.152 2.526 1.19 2.958 1.408.432.218.72.326.826.508.104.182.104 1.062-.288 2.168z"></path>
       </svg>
     </a>
