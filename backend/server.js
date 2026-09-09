@@ -129,8 +129,10 @@ export const api = onRequest({
   timeoutSeconds: 60
 }, app);
 
-// Start Server locally (Only when run directly, not in Firebase Functions)
-if (process.env.NODE_ENV !== 'production' && !process.env.FUNCTION_TARGET) {
+// Start Server locally (Only when run directly, not in Firebase Functions / CLI analyzer)
+const isFirebase = !!(process.env.FUNCTIONS_EMULATOR || process.env.FIREBASE_CONFIG || process.env.GCF_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || process.env.FUNCTION_TARGET || process.env.K_SERVICE);
+const isMain = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+if (isMain && !isFirebase && process.env.NODE_ENV !== 'production') {
   app.listen(PORT, async () => {
     console.log(`[Creator Shopy] Server running on http://localhost:${PORT}`);
     try {
