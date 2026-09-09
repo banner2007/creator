@@ -591,27 +591,26 @@ OBJECTIVE:
 Generate a commercial advertising banner that preserves the exact real product from the product images while reproducing the visual scene and language of the reference image.
 
 ${validated.referenceImage ? `REFERENCE IMAGE RECREATION INSTRUCTIONS:
-You MUST treat the last attached image (Image ${productImages.length + 1}) as an obligatory storyboard to follow, not as an optional suggestion. Your main task is to RECREATE the scene from this reference image almost exactly, substituting only the product/object that appears in it with the real product from the first attached image(s).
-You MUST analyze and replicate the following elements from the reference image:
-- exact composition and camera framing
-- camera angle and camera height
-- type, direction, and intensity of lighting
-- shadows, highlights, and reflections
-- typographical layout and empty/negative spacing if applicable
+You MUST treat the last attached image (Image ${productImages.length + 1}) as an artistic style & composition guide only (framing, camera angle, light direction, negative space, typographical balance).
 
-CRITICAL CONTEXTUAL COHERENCE FOR THE PRODUCT:
-The setting, background, surfaces, and props MUST make commercial and realistic sense for the REAL PRODUCT being sold.
-For example:
-- If the real product is an electronic payment terminal, point of sale (POS) or datáfono, place it in a realistic business environment (such as a clean retail counter, restaurant cashier, boutique desk, or customer checkout surface). NEVER place electronic/business products on the floor, in a gym/fitness locker room, or in inappropriate environments simply because the reference image was set there.
-- Adapt the scene's surfaces and props so they logically match the utility, nature, and market of the real product, while strictly preserving the camera angle, framing, and lighting structure of the reference image.
+UNIVERSAL RULE: PRODUCT COHERENCE OVERRIDES REFERENCE BACKGROUND
+The final setting, background, surfaces, props, and environment MUST BE 100% APPROPRIATE AND NATURAL FOR THE REAL PRODUCT BEING SOLD (${cleanedProduct}), completely ignoring and discarding any setting or props from the reference image that do not belong to this product's domain.
+
+RULES:
+1. IDENTIFY THE NATURE OF THE REAL PRODUCT (${cleanedProduct}):
+   - Determine where this specific product is naturally purchased, stored, used, or operated in real life (e.g. kitchen, living room, office desk, commercial checkout counter, luxury bathroom, workshop, outdoors, etc.).
+2. ADAPT THE SCENE ACCORDINGLY:
+   - Place the real product ONLY in an environment and on surfaces where it naturally belongs.
+   - NEVER transfer unrelated background scenes or props from the reference image (e.g., NEVER put electronics or non-fitness products on gym floors or workout benches; NEVER put beauty cosmetics in automotive garages; NEVER put food products in restrooms).
+   - If the reference image features a specific niche environment (like a gym, sports arena, beach, or kitchen) and the real product belongs to a different niche, YOU MUST REPLACE that environment with the real product's authentic commercial setting while keeping only the lighting quality and compositional layout.
+3. PRESERVE COMPOSITION AND LIGHTING:
+   - Replicate the camera angle, camera distance, lighting intensity, and contrast style of the reference image, but applied to the real product's natural environment.
 
 DO NOT copy, recreate, reinterpret, or transfer the following from the reference image:
 - the product/object shape or packaging
-- labels or logos
-- physical textures applied to the reference product
-- colors of the reference product
-- dimensions or materials of the reference product
-- out-of-context props that make no sense for the real product` : ''}
+- labels, texts, or logos
+- physical textures or materials of the reference object
+- background elements, setting, or props that make no commercial or functional sense for the real product` : ''}
 
 STRICT PRODUCT PRESERVATION RULES (MANDATORY):
 Use the first attached image(s) (Image 1${productImages.length > 1 ? ` to Image ${productImages.length}` : ''}) as the exact, immutable product to appear in the final advertisement.
