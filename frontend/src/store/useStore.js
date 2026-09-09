@@ -54,9 +54,28 @@ const getHeaders = (token) => ({
   'Authorization': `Bearer ${token}`
 });
 
+// Safely load and validate token from localStorage to prevent 413 Payload Too Large errors
+const getSafeToken = () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (token) {
+      if (token.length > 6000) {
+        console.warn('Oversized/Corrupted token detected in localStorage (>6000 chars), clearing to prevent HTTP 413...');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        return null;
+      }
+      return token;
+    }
+  } catch (err) {
+    console.error('Error reading token from localStorage:', err);
+  }
+  return null;
+};
+
 export const useStore = create((set, get) => ({
   // Auth state
-  token: localStorage.getItem('token') || null,
+  token: getSafeToken(),
   user: JSON.parse(localStorage.getItem('user')) || null,
   
   // App state
@@ -567,6 +586,43 @@ export const useStore = create((set, get) => ({
       console.error('Error deleting product:', err);
     }
     return false;
+  },
+
+  searchDropiProducts: async (search, page) => {
+    try {
+      const response = await fetch('/api/products/dropi/search', {
+        method: 'POST',
+        headers: getHeaders(get().token),
+        body: JSON.stringify({ search, page })
+      });
+      const data = await response.json();
+      return { ok: response.ok, status: response.status, data };
+    } catch (err) {
+      console.error('Error searching Dropi products:', err);
+      return { ok: false, data: { error: 'Error de red al buscar productos.' } };
+    }
+  },
+
+  importDropiProduct: async (productData) => {
+    try {
+      const response = await fetch('/api/products/dropi/import', {
+        method: 'POST',
+        headers: getHeaders(get().token),
+        body: JSON.stringify(productData)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        set(state => ({
+          products: [data, ...state.products],
+          selectedProduct: data
+        }));
+        return { ok: true, data };
+      }
+      return { ok: false, data };
+    } catch (err) {
+      console.error('Error importing Dropi product:', err);
+      return { ok: false, data: { error: 'Error de red al importar producto.' } };
+    }
   },
 
   selectProduct: (product) => set({ selectedProduct: product }),

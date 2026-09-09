@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
 import { useStore } from './store/useStore.js';
-import { LayoutDashboard, PenTool, Image, LogOut, Moon, Sun, ShieldAlert, Sparkles, CreditCard, Layers, Folder, Megaphone, BrainCircuit, Calculator } from 'lucide-react';
+import { LayoutDashboard, PenTool, Image, LogOut, Moon, Sun, ShieldAlert, Sparkles, CreditCard, Layers, Folder, Megaphone, BrainCircuit, Calculator, LifeBuoy, GraduationCap, Award, MessageSquare, Truck, Users, Settings as SettingsIcon, Share2, HelpCircle } from 'lucide-react';
 import Dashboard from './pages/Dashboard.jsx';
 import BuilderPage from './pages/BuilderPage.jsx';
 import ImageGenPage from './pages/ImageGenPage.jsx';
@@ -10,6 +10,20 @@ import AdGenPage from './pages/AdGenPage.jsx';
 import LandingGenPage from './pages/LandingGenPage.jsx';
 import MarketResearchPage from './pages/MarketResearchPage.jsx';
 import FinancialPage from './pages/FinancialPage.jsx';
+import SupportPage from './pages/SupportPage.jsx';
+import ConstructorPage from './pages/ConstructorPage.jsx';
+import Academia from './pages/Academia.jsx';
+import Coaching from './pages/Coaching.jsx';
+import Experiencia from './pages/Experiencia.jsx';
+import CreativosPro from './pages/CreativosPro.jsx';
+import ProductResearch from './pages/ProductResearch.jsx';
+import MetaAds from './pages/MetaAds.jsx';
+import Proveedores from './pages/Proveedores.jsx';
+import Confirma from './pages/Confirma.jsx';
+import Chateando from './pages/Chateando.jsx';
+import Referidos from './pages/Referidos.jsx';
+import Equipo from './pages/Equipo.jsx';
+import Settings from './pages/Settings.jsx';
 
 function AuthGuard({ children }) {
   const token = useStore((state) => state.token);
@@ -175,37 +189,81 @@ function MainLayout() {
 
           {/* Links */}
           <nav class="space-y-1 max-h-[60vh] overflow-y-auto pr-1">
-            <Link to="/" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
-              <LayoutDashboard class="w-4 h-4" />
-              <span class="text-xs font-semibold">Proyectos</span>
+            <Link to="/dashboard" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <LayoutDashboard class="w-4 h-4 text-purple-400" />
+              <span class="text-xs font-semibold">Dashboard</span>
             </Link>
-            <Link to="/builder" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
-              <PenTool class="w-4 h-4" />
-              <span class="text-xs font-semibold">Constructor</span>
+            <Link to="/dashboard/academia" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <GraduationCap class="w-4 h-4 text-emerald-400" />
+              <span class="text-xs font-semibold">Academia <span class="text-[9px] text-emerald-400 font-bold ml-1">Nuevo</span></span>
             </Link>
-            <Link to="/products" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
-              <Folder class="w-4 h-4" />
-              <span class="text-xs font-semibold">Mis Productos</span>
-            </Link>
-            <Link to="/ad-generator" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
-              <Megaphone class="w-4 h-4" />
-              <span class="text-xs font-semibold">Generador Anuncios</span>
+            <Link to="/dashboard/coaching" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <Award class="w-4 h-4 text-yellow-400" />
+              <span class="text-xs font-semibold">Coaching <span class="text-[9px] text-yellow-400 font-bold ml-1">Nuevo</span></span>
             </Link>
             <Link to="/landing-generator" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
-              <Layers class="w-4 h-4" />
-              <span class="text-xs font-semibold">Generador Landings</span>
+              <Layers class="w-4 h-4 text-indigo-400" />
+              <span class="text-xs font-semibold">Crea tu Landing</span>
             </Link>
-            <Link to="/research" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
-              <BrainCircuit class="w-4 h-4" />
-              <span class="text-xs font-semibold">Investigación IA</span>
-            </Link>
-            <Link to="/financial" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
-              <Calculator class="w-4 h-4" />
-              <span class="text-xs font-semibold">Análisis Financiero</span>
+            <Link to="/experiencia" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <MessageSquare class="w-4 h-4 text-sky-400" />
+              <span class="text-xs font-semibold">Experiencia <span class="text-[9px] text-sky-400 font-bold ml-1">Nuevo</span></span>
             </Link>
             <Link to="/ai" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
-              <Image class="w-4 h-4" />
-              <span class="text-xs font-semibold">Estudio IA (Libre)</span>
+              <Image class="w-4 h-4 text-purple-400" />
+              <span class="text-xs font-semibold">Estudio IA <span class="text-[9px] text-purple-400 font-bold ml-1">Nuevo</span></span>
+            </Link>
+            <Link to="/creativospro" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <PenTool class="w-4 h-4 text-fuchsia-400" />
+              <span class="text-xs font-semibold">Creativos Pro <span class="text-[9px] text-fuchsia-400 font-bold ml-1">Nuevo</span></span>
+            </Link>
+            <Link to="/dashboard/product-research" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <BrainCircuit class="w-4 h-4 text-indigo-400" />
+              <span class="text-xs font-semibold">Producto Ganador <span class="text-[9px] text-indigo-400 font-bold ml-1">Nuevo</span></span>
+            </Link>
+            <Link to="/dashboard/meta-ads" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <Megaphone class="w-4 h-4 text-purple-400" />
+              <span class="text-xs font-semibold">Mi Agente <span class="text-[9px] text-purple-400 font-bold ml-1">Nuevo</span></span>
+            </Link>
+            <Link to="/dashboard/informe-financiero" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <Calculator class="w-4 h-4 text-slate-400" />
+              <span class="text-xs font-semibold">Informe Financiero <span class="text-[9px] text-slate-400 font-bold ml-1">Nuevo</span></span>
+            </Link>
+            <Link to="/dashboard/proveedores" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <Truck class="w-4 h-4 text-amber-400" />
+              <span class="text-xs font-semibold">Proveedores <span class="text-[9px] text-amber-400 font-bold ml-1">Nuevo</span></span>
+            </Link>
+            <a href="https://discord.gg/dpxM6SaUr" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <HelpCircle class="w-4 h-4 text-blue-400" />
+              <span class="text-xs font-semibold">Unete a Discord</span>
+            </a>
+            <Link to="/constructor" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <PenTool class="w-4 h-4 text-teal-400" />
+              <span class="text-xs font-semibold">Mi Tienda</span>
+            </Link>
+            <Link to="/confirma" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <Layers class="w-4 h-4 text-emerald-400" />
+              <span class="text-xs font-semibold">Confirma <span class="text-[9px] text-emerald-400 font-bold ml-1">Nuevo</span></span>
+            </Link>
+            <Link to="/chateando" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <MessageSquare class="w-4 h-4 text-cyan-400" />
+              <span class="text-xs font-semibold">Chateando <span class="text-[9px] text-cyan-400 font-bold ml-1">Nuevo</span></span>
+            </Link>
+            <Link to="/dashboard/soporte" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <LifeBuoy class="w-4 h-4 text-red-400" />
+              <span class="text-xs font-semibold">Soporte <span class="text-[9px] text-red-400 font-bold ml-1">Nuevo</span></span>
+            </Link>
+            <Link to="/dashboard/referidos" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <Share2 class="w-4 h-4 text-indigo-400" />
+              <span class="text-xs font-semibold">Referidos <span class="text-[9px] text-indigo-400 font-bold ml-1">Nuevo</span></span>
+            </Link>
+            <Link to="/dashboard/equipo" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <Users class="w-4 h-4 text-fuchsia-400" />
+              <span class="text-xs font-semibold">Equipo</span>
+            </Link>
+            <Link to="/dashboard/settings" class="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-white/5 transition-all text-slate-300 hover:text-white">
+              <SettingsIcon class="w-4 h-4 text-slate-400" />
+              <span class="text-xs font-semibold">Settings</span>
             </Link>
           </nav>
         </div>
@@ -255,6 +313,7 @@ function MainLayout() {
             <Link to="/landing-generator" class="text-slate-400 hover:text-white" title="Landings"><Layers class="w-4.5 h-4.5" /></Link>
             <Link to="/research" class="text-slate-400 hover:text-white" title="Investigación"><BrainCircuit class="w-4.5 h-4.5" /></Link>
             <Link to="/financial" class="text-slate-400 hover:text-white" title="Finanzas"><Calculator class="w-4.5 h-4.5" /></Link>
+            <Link to="/support" class="text-slate-400 hover:text-white" title="Soporte"><LifeBuoy class="w-4.5 h-4.5" /></Link>
             <button onClick={logout} class="text-red-400" title="Salir"><LogOut class="w-4.5 h-4.5" /></button>
           </div>
         </header>
@@ -263,13 +322,30 @@ function MainLayout() {
         <main class="flex-1 relative z-10 font-sans">
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/builder" element={<BuilderPage />} />
+            <Route path="/constructor" element={<ConstructorPage />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/ad-generator" element={<AdGenPage />} />
             <Route path="/landing-generator" element={<LandingGenPage />} />
             <Route path="/research" element={<MarketResearchPage />} />
             <Route path="/financial" element={<FinancialPage />} />
             <Route path="/ai" element={<ImageGenPage />} />
+            <Route path="/support" element={<SupportPage />} />
+            <Route path="/dashboard/academia" element={<Academia />} />
+            <Route path="/dashboard/coaching" element={<Coaching />} />
+            <Route path="/experiencia" element={<Experiencia />} />
+            <Route path="/creativospro" element={<CreativosPro />} />
+            <Route path="/dashboard/product-research" element={<ProductResearch />} />
+            <Route path="/dashboard/meta-ads" element={<MetaAds />} />
+            <Route path="/dashboard/informe-financiero" element={<FinancialPage />} />
+            <Route path="/dashboard/proveedores" element={<Proveedores />} />
+            <Route path="/confirma" element={<Confirma />} />
+            <Route path="/chateando" element={<Chateando />} />
+            <Route path="/dashboard/soporte" element={<SupportPage />} />
+            <Route path="/dashboard/referidos" element={<Referidos />} />
+            <Route path="/dashboard/equipo" element={<Equipo />} />
+            <Route path="/dashboard/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

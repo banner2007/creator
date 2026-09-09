@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore.js';
 import { 
   Sparkles, Sliders, Download, Wand2, RefreshCw, 
   FileImage, HelpCircle, Check, Search, Upload, Trash2, 
   ChevronLeft, ChevronRight, ArrowLeft, Plus, DollarSign, Folder,
-  Play, X, Globe, Maximize2, FileText, CheckCircle2, Eye
+  Play, X, Globe, Maximize2, FileText, CheckCircle2, Eye, Palette,
+  Users, Tag, Truck, Info, BrainCircuit
 } from 'lucide-react';
 import { storage, ref, uploadBytes, getDownloadURL } from '../utils/firebase.js';
 import { getProductDisplayImage, getProductImagesArray } from '../utils/productUtils.js';
@@ -288,6 +289,7 @@ export default function AdGenPage() {
     createProduct,
     createProject,
     updateProduct,
+    generateSalesAngles,
     
     // Firebase templates
     firebaseTemplates,
@@ -313,6 +315,29 @@ export default function AdGenPage() {
   const [customStyleEnabled, setCustomStyleEnabled] = useState(false);
   const [customStyle, setCustomStyle] = useState('');
   const [calidad, setCalidad] = useState('medio');
+
+  // Shared Personalization States (Synced with LandingGenPage)
+  const [charNationality, setCharNationality] = useState('Colombia');
+  const [charGender, setCharGender] = useState('Mujer');
+  const [charAgeRange, setCharAgeRange] = useState('25 - 35');
+
+  const [offerAntes1, setOfferAntes1] = useState('');
+  const [offerPrecio1, setOfferPrecio1] = useState('0');
+  const [offerAntes2, setOfferAntes2] = useState('');
+  const [offerPrecio2, setOfferPrecio2] = useState('0');
+  const [offerAntes3, setOfferAntes3] = useState('');
+  const [offerPrecio3, setOfferPrecio3] = useState('0');
+  const [offerCurrency, setOfferCurrency] = useState('Estados Unidos — USD ($)');
+
+  const [logisticsCountry, setLogisticsCountry] = useState('');
+  const [bgColor, setBgColor] = useState('#0f172a');
+
+  // AI Sales Angles states
+  const [productLink, setProductLink] = useState('');
+  const [salesAngles, setSalesAngles] = useState([]);
+  const [selectedAngles, setSelectedAngles] = useState({}); // e.g. { 0: true, 1: false, ... }
+  const [isGeneratingAngles, setIsGeneratingAngles] = useState(false);
+  const [isSavingAngles, setIsSavingAngles] = useState(false);
 
   // Pagination & Search State (inside template selection modal)
   const [searchQuery, setSearchQuery] = useState('');
@@ -393,7 +418,9 @@ export default function AdGenPage() {
     }
   }, [selectedTemplate, customImage]);
 
-  // Prepopulate Product Images on product selection
+  const lastLoadedProductIdRef = useRef(null);
+
+  // Load saved personalization values on product selection
   useEffect(() => {
     if (selectedProductForGen) {
       if (selectedProductForGen.id === 'new') {
@@ -402,8 +429,274 @@ export default function AdGenPage() {
         setProductImages(getProductImagesArray(selectedProductForGen.cover_image));
       }
       setSuccessImages([]);
+
+      const savedDataStr = localStorage.getItem(`landing_personalization_${selectedProductForGen.id}`);
+      if (savedDataStr) {
+        try {
+          const data = JSON.parse(savedDataStr);
+          setCharNationality(data.charNationality || '');
+          setCharGender(data.charGender || '');
+          setCharAgeRange(data.charAgeRange || '');
+          setOfferAntes1(data.offerAntes1 || '');
+          setOfferPrecio1(data.offerPrecio1 || '0');
+          setOfferAntes2(data.offerAntes2 || '');
+          setOfferPrecio2(data.offerPrecio2 || '0');
+          setOfferAntes3(data.offerAntes3 || '');
+          setOfferPrecio3(data.offerPrecio3 || '0');
+          setOfferCurrency(data.offerCurrency || 'Estados Unidos — USD ($)');
+          setLogisticsCountry(data.logisticsCountry || '');
+          setProductLink(data.productLink || '');
+          setCustomStyle(data.customStyle || '');
+          setCustomStyleEnabled(!!data.customStyleEnabled);
+          setBgColor(data.bgColor || '#0f172a');
+          setSalesAngles(data.salesAngles || []);
+          setSelectedAngles(data.selectedAngles || {});
+
+          // Restore ad-specific creator settings (prefixed to avoid collision with LandingGenPage)
+          setSelectedTemplate(data.ad_selectedTemplate || data.selectedTemplate || '');
+          setCustomImage(data.ad_customImage || data.customImage || '');
+          setFormat(data.ad_format || data.format || '1:1');
+          setLanguage(data.ad_language || data.language || 'es');
+          setEngine(data.ad_engine || data.engine || 'kie-ai');
+          setCalidad(data.ad_calidad || data.calidad || 'medio');
+
+          // Restore temporary registration details if it's a new product
+          if (selectedProductForGen.id === 'new') {
+            setNewProdName(data.newProdName || '');
+            setNewProdPrice(data.newProdPrice || '');
+            setNewProdCategory(data.newProdCategory || '');
+            setNewProdDescription(data.newProdDescription || '');
+          }
+        } catch (e) {
+          console.error("Error parsing saved personalization data in AdGenPage:", e);
+        }
+      } else {
+        // Reset to default values
+        setCharNationality('Colombia');
+        setCharGender('Mujer');
+        setCharAgeRange('25 - 35');
+        setOfferAntes1('');
+        setOfferPrecio1('0');
+        setOfferAntes2('');
+        setOfferPrecio2('0');
+        setOfferAntes3('');
+        setOfferPrecio3('0');
+        setOfferCurrency('Estados Unidos — USD ($)');
+        setLogisticsCountry('');
+        setProductLink('');
+        setCustomStyle('');
+        setCustomStyleEnabled(false);
+        setBgColor('#0f172a');
+        setSalesAngles([]);
+        setSelectedAngles({});
+
+        // Reset ad-specific settings
+        setSelectedTemplate('');
+        setCustomImage('');
+        setFormat('1:1');
+        setLanguage('es');
+        setEngine('kie-ai');
+        setCalidad('medio');
+
+        // Reset temporary registration details if it's a new product
+        if (selectedProductForGen.id === 'new') {
+          setNewProdName('');
+          setNewProdPrice('');
+          setNewProdCategory('');
+          setNewProdDescription('');
+        }
+      }
+      lastLoadedProductIdRef.current = selectedProductForGen.id;
     }
   }, [selectedProductForGen]);
+
+  // Save personalization values on change
+  useEffect(() => {
+    if (selectedProductForGen && lastLoadedProductIdRef.current === selectedProductForGen.id) {
+      const data = {
+        charNationality,
+        charGender,
+        charAgeRange,
+        offerAntes1,
+        offerPrecio1,
+        offerAntes2,
+        offerPrecio2,
+        offerAntes3,
+        offerPrecio3,
+        offerCurrency,
+        logisticsCountry,
+        productLink,
+        customStyle,
+        customStyleEnabled,
+        bgColor,
+        salesAngles,
+        selectedAngles,
+
+        // Page-specific settings (prefixed to avoid collision with LandingGenPage)
+        ad_selectedTemplate: selectedTemplate,
+        ad_customImage: customImage,
+        ad_format: format,
+        ad_language: language,
+        ad_engine: engine,
+        ad_calidad: calidad,
+
+        // Temporary registration details if it's a new product
+        newProdName: selectedProductForGen.id === 'new' ? newProdName : '',
+        newProdPrice: selectedProductForGen.id === 'new' ? newProdPrice : '',
+        newProdCategory: selectedProductForGen.id === 'new' ? newProdCategory : '',
+        newProdDescription: selectedProductForGen.id === 'new' ? newProdDescription : ''
+      };
+      localStorage.setItem(`landing_personalization_${selectedProductForGen.id}`, JSON.stringify(data));
+    }
+  }, [
+    selectedProductForGen,
+    charNationality,
+    charGender,
+    charAgeRange,
+    offerAntes1,
+    offerPrecio1,
+    offerAntes2,
+    offerPrecio2,
+    offerAntes3,
+    offerPrecio3,
+    offerCurrency,
+    logisticsCountry,
+    productLink,
+    customStyle,
+    customStyleEnabled,
+    bgColor,
+    salesAngles,
+    selectedAngles,
+    selectedTemplate,
+    customImage,
+    format,
+    language,
+    engine,
+    calidad,
+    newProdName,
+    newProdPrice,
+    newProdCategory,
+    newProdDescription
+  ]);
+
+  // AI Sales Angles handlers
+  const handleGenerateSalesAngles = async () => {
+    const description = selectedProductForGen.id === 'new' ? newProdDescription : (selectedProductForGen.description || '');
+    if (!description.trim() && !productLink.trim()) {
+      alert('Por favor ingresa una descripción para el producto o un link del producto.');
+      return;
+    }
+    
+    setIsGeneratingAngles(true);
+    try {
+      const angles = await generateSalesAngles(selectedProductForGen.id, description, productLink);
+      if (angles && angles.length > 0) {
+        setSalesAngles(angles);
+        // Select all by default
+        const initialSelected = {};
+        angles.forEach((_, idx) => {
+          initialSelected[idx] = true;
+        });
+        setSelectedAngles(initialSelected);
+      }
+    } catch (err) {
+      console.error('Error generating sales angles:', err);
+    } finally {
+      setIsGeneratingAngles(false);
+    }
+  };
+
+  const handleSaveSalesAngles = async () => {
+    const selectedIndices = Object.keys(selectedAngles).filter(idx => selectedAngles[idx]);
+    if (selectedIndices.length === 0) {
+      alert('Por favor selecciona al menos un ángulo de venta.');
+      return;
+    }
+    
+    setIsSavingAngles(true);
+    try {
+      let anglesText = "\n\n🎯 Ángulos de venta ganadores:\n";
+      selectedIndices.forEach(idx => {
+        const angle = salesAngles[idx];
+        anglesText += `• **${angle.titulo}** (${angle.enfoque}): ${angle.texto} (CTA: ${angle.cta})\n`;
+      });
+      
+      const currentDesc = selectedProductForGen.id === 'new' ? newProdDescription : (selectedProductForGen.description || '');
+      const updatedDesc = currentDesc + anglesText;
+      
+      if (selectedProductForGen.id === 'new') {
+        setNewProdDescription(updatedDesc);
+        alert('Ángulos de venta agregados temporalmente a la descripción del producto. Se guardarán al registrar el producto.');
+      } else {
+        const result = await updateProduct(selectedProductForGen.id, { description: updatedDesc });
+        if (result) {
+          setSelectedProductForGen(prev => ({
+            ...prev,
+            description: updatedDesc
+          }));
+          alert('Ángulos de venta guardados con éxito en la descripción del producto.');
+        }
+      }
+    } catch (err) {
+      console.error('Error saving sales angles:', err);
+      alert('Error al guardar los ángulos de venta.');
+    } finally {
+      setIsSavingAngles(false);
+    }
+  };
+
+  const handleRegenerateUnselectedAngles = async () => {
+    const description = selectedProductForGen.id === 'new' ? newProdDescription : (selectedProductForGen.description || '');
+    if (!description.trim() && !productLink.trim()) {
+      alert('Por favor ingresa una descripción para el producto o un link del producto.');
+      return;
+    }
+    
+    setIsGeneratingAngles(true);
+    try {
+      const checkedAngles = [];
+      salesAngles.forEach((angle, idx) => {
+        if (selectedAngles[idx] === true) {
+          checkedAngles.push(angle);
+        }
+      });
+      
+      if (checkedAngles.length === 5) {
+        alert('Todos los ángulos están seleccionados. Desmarca los que quieras cambiar para poder regenerarlos.');
+        setIsGeneratingAngles(false);
+        return;
+      }
+      
+      const newAngles = await generateSalesAngles(selectedProductForGen.id, description, productLink);
+      
+      if (newAngles && newAngles.length > 0) {
+        let newAngleIndex = 0;
+        const mergedAngles = salesAngles.map((oldAngle, idx) => {
+          if (selectedAngles[idx] === true) {
+            return oldAngle;
+          } else {
+            const fresh = newAngles[newAngleIndex] || newAngles[newAngleIndex % newAngles.length];
+            newAngleIndex++;
+            return fresh;
+          }
+        });
+        
+        setSalesAngles(mergedAngles);
+        
+        const updatedSelected = {};
+        mergedAngles.forEach((_, idx) => {
+          if (selectedAngles[idx] === true) {
+            updatedSelected[idx] = true;
+          }
+        });
+        setSelectedAngles(updatedSelected);
+      }
+    } catch (err) {
+      console.error('Error regenerating unselected sales angles:', err);
+    } finally {
+      setIsGeneratingAngles(false);
+    }
+  };
 
   const handleGenerate = async (e) => {
     e.preventDefault();
@@ -459,14 +752,72 @@ export default function AdGenPage() {
       refImageUrl = await getTemplateDownloadUrl(highQualityPath);
     }
 
-    // Build prompt for AI model
-    let promptText = `Product: ${currentProduct.name}. Description: ${currentProduct.description}. Style context: referencing selected composition template.`;
-    if (customStyle.trim()) {
-      promptText += ` Additional style directions: ${customStyle}`;
+    // Build rich prompt for ad banner layout
+    let promptText = `Commercial ad banner composition. Product: ${currentProduct.name}. Background color: ${bgColor}. Description: ${currentProduct.description}. referencing selected composition template.`;
+    
+    if (customStyleEnabled) {
+      let personalizationParts = [];
+      
+      // Character Adaptation info
+      if (charNationality || charGender || charAgeRange) {
+        let charDesc = 'Target Audience / Characters:';
+        if (charNationality) charDesc += ` Nationality/Appearance: ${charNationality}.`;
+        if (charGender) charDesc += ` Gender: ${charGender}.`;
+        if (charAgeRange) charDesc += ` Age Range: ${charAgeRange}.`;
+        personalizationParts.push(charDesc);
+      }
+      
+      // Offer configuration info
+      let offerDesc = '';
+      if (offerPrecio1 && offerPrecio1 !== '0') {
+        offerDesc += ` 1 unit price: ${offerAntes1 ? `before ${offerAntes1} ${offerCurrency}, ` : ''}now ${offerPrecio1} ${offerCurrency}.`;
+      }
+      if (offerPrecio2 && offerPrecio2 !== '0') {
+        offerDesc += ` 2 units price: ${offerAntes2 ? `before ${offerAntes2} ${offerCurrency}, ` : ''}now ${offerPrecio2} ${offerCurrency}.`;
+      }
+      if (offerPrecio3 && offerPrecio3 !== '0') {
+        offerDesc += ` 3 units price: ${offerAntes3 ? `before ${offerAntes3} ${offerCurrency}, ` : ''}now ${offerPrecio3} ${offerCurrency}.`;
+      }
+      if (offerDesc) {
+        personalizationParts.push(`Offer details (display these exact prices): ${offerDesc}`);
+      }
+      
+      // Logistics country info
+      if (logisticsCountry) {
+        personalizationParts.push(`Logistics / Shipping Target Country: ${logisticsCountry}.`);
+      }
+      
+      if (personalizationParts.length > 0) {
+        promptText += ` Block Personalization Info: ${personalizationParts.join(' | ')}.`;
+      }
+      
+      if (customStyle.trim()) {
+        promptText += ` Additional style/design requirements: ${customStyle}`;
+      }
+    } else {
+      if (customStyle.trim()) {
+        promptText += ` Style customization: ${customStyle}`;
+      }
     }
 
-    // Append metadata tag with product ID
+    // Incorporate selected sales angles directly into prompt
+    const selectedIndices = Object.keys(selectedAngles).filter(idx => selectedAngles[idx]);
+    if (selectedIndices.length > 0 && salesAngles.length > 0) {
+      let anglesPromptPart = ' Sales angles to incorporate:';
+      selectedIndices.forEach(idx => {
+        const angle = salesAngles[idx];
+        if (angle) {
+          anglesPromptPart += ` [Angle: ${angle.titulo} - ${angle.texto} (CTA: ${angle.cta})]`;
+        }
+      });
+      promptText += anglesPromptPart;
+    }
+
+    // Append metadata tag with product ID and template/category
     promptText += ` [product_id: ${currentProduct.id}]`;
+    if (selectedTemplate) {
+      promptText += ` [template: ${selectedTemplate}]`;
+    }
 
     // Find the first valid product image URL (uploaded or cover image)
     // Avoid using the default Unsplash placeholder if there is an uploaded image in other slots
@@ -905,6 +1256,148 @@ export default function AdGenPage() {
           </div>
         )}
 
+        {/* Sección: Generar Ángulos de Ventas con AI */}
+        <div className="p-5 rounded-2xl bg-purple-950/10 border border-purple-500/10 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-slate-200 font-extrabold text-[11px] uppercase tracking-wider">
+              <BrainCircuit className="w-4 h-4 text-purple-400" />
+              <span>Generar Ángulo de Ventas con AI</span>
+            </div>
+            <span className="text-[10px] text-slate-500 font-semibold tracking-wider">(Opcional)</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-slate-400">Link del Producto (Opcional)</label>
+              <input 
+                type="text" 
+                placeholder="https://ejemplo.com/producto" 
+                className="glass-input bg-slate-950/60"
+                value={productLink}
+                onChange={e => {
+                  const val = e.target.value;
+                  setProductLink(val);
+                  if (selectedProductForGen && selectedProductForGen.id !== 'new') {
+                    localStorage.setItem(`product_link_${selectedProductForGen.id}`, val);
+                  }
+                }}
+              />
+            </div>
+
+            {selectedProductForGen.id !== 'new' && (
+              <div className="flex flex-col gap-1.5 col-span-1 sm:col-span-2">
+                <label className="text-xs font-semibold text-slate-400">Descripción del Producto (para el análisis)</label>
+                <textarea 
+                  rows="6"
+                  placeholder="Descripción del producto..." 
+                  className="glass-input bg-slate-950/60 resize-y text-xs min-h-[120px]"
+                  value={selectedProductForGen.description || ''}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setSelectedProductForGen(prev => ({ ...prev, description: val }));
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between items-center gap-4 pt-2">
+            <button
+              type="button"
+              onClick={handleGenerateSalesAngles}
+              disabled={isGeneratingAngles || (!productLink.trim() && !(selectedProductForGen.id === 'new' ? newProdDescription : (selectedProductForGen.description || '')).trim())}
+              className="px-4 py-2.5 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 disabled:opacity-40 text-white text-xs font-bold rounded-2xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+            >
+              {isGeneratingAngles ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Generando ángulos...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-purple-300 animate-pulse" />
+                  <span>Generar Ángulo de Ventas con AI (1 crédito)</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Render generated angles if available */}
+          {salesAngles.length > 0 && (
+            <div className="pt-4 border-t border-white/5 space-y-4">
+              <h4 className="text-xs font-bold text-slate-300">Selecciona los ángulos preferidos:</h4>
+              <div className="space-y-3">
+                {salesAngles.map((angle, idx) => (
+                  <div key={idx} className="flex items-start gap-3 p-3 rounded-xl bg-slate-950/40 border border-white/5 hover:border-white/10 transition-all">
+                    <input 
+                      type="checkbox"
+                      id={`angle-check-${idx}`}
+                      checked={!!selectedAngles[idx]}
+                      onChange={e => {
+                        const checked = e.target.checked;
+                        const updated = { ...selectedAngles, [idx]: checked };
+                        setSelectedAngles(updated);
+                        if (selectedProductForGen && selectedProductForGen.id !== 'new') {
+                          localStorage.setItem(`selected_angles_${selectedProductForGen.id}`, JSON.stringify(updated));
+                        }
+                      }}
+                      className="mt-1 w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-white/10 bg-slate-900 cursor-pointer"
+                    />
+                    <label htmlFor={`angle-check-${idx}`} className="flex-1 text-xs cursor-pointer select-none space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="font-extrabold text-purple-400">Ángulo {idx + 1}: {angle.titulo}</span>
+                        <span className="px-1.5 py-0.5 text-[9px] bg-purple-950/50 text-purple-300 border border-purple-500/10 rounded uppercase font-bold tracking-wider">{angle.enfoque}</span>
+                      </div>
+                      <p className="text-slate-300 leading-relaxed">{angle.texto}</p>
+                      {angle.cta && <div className="text-[10px] text-slate-500 font-bold">CTA Sugerido: <span className="text-slate-400">"{angle.cta}"</span></div>}
+                    </label>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={handleSaveSalesAngles}
+                  disabled={isSavingAngles || Object.keys(selectedAngles).filter(k => selectedAngles[k]).length === 0}
+                  className="px-4 py-2.5 bg-gradient-to-r from-indigo-700 to-purple-700 hover:from-indigo-600 hover:to-indigo-600 disabled:opacity-40 text-white text-xs font-bold rounded-2xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isSavingAngles ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Guardando en el producto...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-indigo-300" />
+                      <span>Guardar Ángulos Seleccionados en la Descripción</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleRegenerateUnselectedAngles}
+                  disabled={isGeneratingAngles || Object.keys(selectedAngles).filter(k => selectedAngles[k]).length === 5}
+                  className="px-4 py-2.5 bg-purple-950/20 border border-purple-500/30 hover:bg-purple-950/40 text-purple-300 disabled:opacity-40 text-white text-xs font-bold rounded-2xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isGeneratingAngles ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Regenerando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+                      <span>Regenerar Ángulos No Seleccionados (1 crédito)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Double Panel Grid (Referencia & Foto del Producto) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           
@@ -1032,9 +1525,31 @@ export default function AdGenPage() {
         </div>
 
         {/* Dropdowns Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2">
+          {/* Color de Fondo */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <Palette className="w-3.5 h-3.5 text-purple-400" />
+              <span>Color de Fondo</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <input 
+                type="color" 
+                className="w-9 h-9 rounded-lg bg-transparent border-0 cursor-pointer"
+                value={bgColor}
+                onChange={e => setBgColor(e.target.value)}
+              />
+              <input 
+                type="text"
+                className="bg-slate-950 border border-white/5 rounded-xl text-xs font-mono text-center py-2.5 flex-1 focus:outline-none focus:border-purple-500/50"
+                value={bgColor}
+                onChange={e => setBgColor(e.target.value)}
+              />
+            </div>
+          </div>
+
           {/* Format selector */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
               <Maximize2 className="w-3.5 h-3.5 text-purple-400" />
               <span>Tamaño de salida del anuncio</span>
@@ -1042,9 +1557,8 @@ export default function AdGenPage() {
             <select 
               value={format} 
               onChange={e => setFormat(e.target.value)}
-              className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-4 py-3 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
+              className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
             >
-              <option value="1:1">Tamaño Original</option>
               <option value="1:1">Cuadrado (1:1)</option>
               <option value="9:16">Vertical (9:16)</option>
               <option value="16:9">Widescreen (16:9)</option>
@@ -1052,7 +1566,7 @@ export default function AdGenPage() {
           </div>
 
           {/* Copy Language selector */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
               <Globe className="w-3.5 h-3.5 text-purple-400" />
               <span>Idioma del copy anuncio</span>
@@ -1060,7 +1574,7 @@ export default function AdGenPage() {
             <select 
               value={language} 
               onChange={e => setLanguage(e.target.value)}
-              className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-4 py-3 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
+              className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
             >
               <option value="es">Español</option>
               <option value="en">Inglés</option>
@@ -1069,7 +1583,7 @@ export default function AdGenPage() {
           </div>
 
           {/* Quality selector */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
               <Sliders className="w-3.5 h-3.5 text-purple-400" />
               <span>Calidad de la imagen</span>
@@ -1077,7 +1591,7 @@ export default function AdGenPage() {
             <select 
               value={calidad} 
               onChange={e => setCalidad(e.target.value)}
-              className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-4 py-3 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
+              className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
             >
               <option value="bajo">Bajo (Generación rápida)</option>
               <option value="medio">Medio (Recomendado)</option>
@@ -1127,17 +1641,242 @@ export default function AdGenPage() {
           </div>
         </div>
 
-        {/* Conditional text input for Custom Style directions */}
+        {/* Conditional Personalization Section */}
         {customStyleEnabled && (
-          <div className="flex flex-col gap-2 pt-2 animate-fadeIn">
-            <label className="text-xs font-bold text-slate-400">Detalles e instrucciones adicionales para la IA</label>
-            <textarea
-              rows="3"
-              placeholder="Ej: Colocar el producto sobre una roca mojada con iluminación de estudio, fondo oscuro y elegante con cascada de agua desenfocada..."
-              className="glass-input resize-none text-xs w-full bg-slate-950/60"
-              value={customStyle}
-              onChange={e => setCustomStyle(e.target.value)}
-            />
+          <div className="space-y-6 pt-2 animate-fadeIn">
+            {/* 1. ADAPTAR PERSONAJES */}
+            <div className="p-5 rounded-2xl bg-[#0e0e11]/80 border border-white/5 space-y-4">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 text-slate-200 font-extrabold text-[11px] uppercase tracking-wider">
+                  <Users className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Adaptar Personajes</span>
+                </div>
+                <span className="text-[10px] text-slate-500 font-semibold tracking-wider">(Opcional)</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nacionalidad</label>
+                  <select
+                    value={charNationality}
+                    onChange={e => setCharNationality(e.target.value)}
+                    className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
+                  >
+                    <option value="">No especificado</option>
+                    <option value="Colombia">Colombia</option>
+                    <option value="México">México</option>
+                    <option value="Chile">Chile</option>
+                    <option value="Perú">Perú</option>
+                    <option value="Ecuador">Ecuador</option>
+                    <option value="España">España</option>
+                    <option value="Argentina">Argentina</option>
+                    <option value="Venezuela">Venezuela</option>
+                    <option value="Bolivia">Bolivia</option>
+                    <option value="Guatemala">Guatemala</option>
+                    <option value="Costa Rica">Costa Rica</option>
+                    <option value="Uruguay">Uruguay</option>
+                    <option value="Paraguay">Paraguay</option>
+                    <option value="Honduras">Honduras</option>
+                    <option value="El Salvador">El Salvador</option>
+                    <option value="Nicaragua">Nicaragua</option>
+                    <option value="Panamá">Panamá</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Sexo</label>
+                  <select
+                    value={charGender}
+                    onChange={e => setCharGender(e.target.value)}
+                    className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
+                  >
+                    <option value="">No especificado</option>
+                    <option value="Mujer">Mujer</option>
+                    <option value="Hombre">Hombre</option>
+                    <option value="Ambos">Ambos</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Rango de Edad</label>
+                  <select
+                    value={charAgeRange}
+                    onChange={e => setCharAgeRange(e.target.value)}
+                    className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
+                  >
+                    <option value="">No especificado</option>
+                    <option value="25 - 35">25 - 35</option>
+                    <option value="18 - 24">18 - 24</option>
+                    <option value="36 - 50">36 - 50</option>
+                    <option value="50+">50+</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCharNationality('');
+                    setCharGender('');
+                    setCharAgeRange('');
+                  }}
+                  className="text-xs text-slate-400 hover:text-slate-200 underline cursor-pointer focus:outline-none transition-colors"
+                >
+                  Limpiar opciones de personaje
+                </button>
+              </div>
+            </div>
+
+            {/* 2. CONFIGURACIÓN PARA LA SECCIÓN DE OFERTA */}
+            <div className="p-5 rounded-2xl bg-[#0e0e11]/80 border border-white/5 space-y-4">
+              <div className="flex items-center gap-2 text-slate-200 font-extrabold text-[11px] uppercase tracking-wider">
+                <Tag className="w-3.5 h-3.5 text-purple-400" />
+                <span>Configuración para la Sección de Oferta</span>
+              </div>
+
+              <div className="space-y-3">
+                {/* Headers */}
+                <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">
+                  <div className="col-span-3 text-left"></div>
+                  <div className="col-span-4">Antes (Opcional)</div>
+                  <div className="col-span-5">Precio Actual</div>
+                </div>
+
+                {/* 1 unidad */}
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-3 text-xs font-semibold text-slate-400">1 unidad</div>
+                  <div className="col-span-4">
+                    <input
+                      type="text"
+                      placeholder="—"
+                      value={offerAntes1}
+                      onChange={e => setOfferAntes1(e.target.value)}
+                      className="glass-input bg-slate-950/60 text-xs w-full py-2 px-3 text-center"
+                    />
+                  </div>
+                  <div className="col-span-5">
+                    <input
+                      type="text"
+                      placeholder="0"
+                      value={offerPrecio1}
+                      onChange={e => setOfferPrecio1(e.target.value)}
+                      className="glass-input bg-slate-950/60 text-xs w-full py-2 px-3 text-center"
+                    />
+                  </div>
+                </div>
+
+                {/* 2 unidades */}
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-3 text-xs font-semibold text-slate-400">2 unidades</div>
+                  <div className="col-span-4">
+                    <input
+                      type="text"
+                      placeholder="—"
+                      value={offerAntes2}
+                      onChange={e => setOfferAntes2(e.target.value)}
+                      className="glass-input bg-slate-950/60 text-xs w-full py-2 px-3 text-center"
+                    />
+                  </div>
+                  <div className="col-span-5">
+                    <input
+                      type="text"
+                      placeholder="0"
+                      value={offerPrecio2}
+                      onChange={e => setOfferPrecio2(e.target.value)}
+                      className="glass-input bg-slate-950/60 text-xs w-full py-2 px-3 text-center"
+                    />
+                  </div>
+                </div>
+
+                {/* 3 unidades */}
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-3 text-xs font-semibold text-slate-400">3 unidades</div>
+                  <div className="col-span-4">
+                    <input
+                      type="text"
+                      placeholder="—"
+                      value={offerAntes3}
+                      onChange={e => setOfferAntes3(e.target.value)}
+                      className="glass-input bg-slate-950/60 text-xs w-full py-2 px-3 text-center"
+                    />
+                  </div>
+                  <div className="col-span-5">
+                    <input
+                      type="text"
+                      placeholder="0"
+                      value={offerPrecio3}
+                      onChange={e => setOfferPrecio3(e.target.value)}
+                      className="glass-input bg-slate-950/60 text-xs w-full py-2 px-3 text-center"
+                    />
+                  </div>
+                </div>
+
+                {/* Divisa */}
+                <div className="grid grid-cols-12 gap-2 items-center pt-2">
+                  <div className="col-span-3 text-xs font-semibold text-slate-400">Divisa</div>
+                  <div className="col-span-9">
+                    <select
+                      value={offerCurrency}
+                      onChange={e => setOfferCurrency(e.target.value)}
+                      className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
+                    >
+                      <option value="Estados Unidos — USD ($)">Estados Unidos — USD ($)</option>
+                      <option value="Colombia — COP ($)">Colombia — COP ($)</option>
+                      <option value="México — MXN ($)">México — MXN ($)</option>
+                      <option value="Chile — CLP ($)">Chile — CLP ($)</option>
+                      <option value="Perú — PEN (S/)">Perú — PEN (S/)</option>
+                      <option value="Ecuador — USD ($)">Ecuador — USD ($)</option>
+                      <option value="España — EUR (€)">España — EUR (€)</option>
+                      <option value="Argentina — ARS ($)">Argentina — ARS ($)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Warning / Note */}
+                <div className="flex items-start gap-2 pt-2 text-[10px] text-slate-400 font-medium">
+                  <Info className="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
+                  <span>Esta configuración aplica solamente para la generación de la sección de oferta.</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. CONFIGURACIÓN PARA LA SECCIÓN LOGÍSTICA */}
+            <div className="p-5 rounded-2xl bg-[#0e0e11]/80 border border-white/5 space-y-4">
+              <div className="flex items-center gap-2 text-slate-200 font-extrabold text-[11px] uppercase tracking-wider">
+                <Truck className="w-3.5 h-3.5 text-purple-400" />
+                <span>Configuración para la Sección Logística</span>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">País donde se realiza la logística</label>
+                <select
+                  value={logisticsCountry}
+                  onChange={e => setLogisticsCountry(e.target.value)}
+                  className="bg-slate-950 border border-white/5 hover:border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-semibold focus:outline-none focus:border-purple-500/50 cursor-pointer w-full transition-all"
+                >
+                  <option value="">Selecciona el país</option>
+                  <option value="Colombia">Colombia</option>
+                  <option value="México">México</option>
+                  <option value="Chile">Chile</option>
+                  <option value="Perú">Perú</option>
+                  <option value="Ecuador">Ecuador</option>
+                  <option value="España">España</option>
+                </select>
+              </div>
+            </div>
+
+            {/* 4. INSTRUCCIONES ADICIONALES */}
+            <div className="flex flex-col gap-2 pt-2">
+              <label className="text-xs font-bold text-slate-300">Detalles e instrucciones adicionales para la IA</label>
+              <textarea
+                rows="3"
+                placeholder="Ej: Colocar el producto sobre una roca mojada con iluminación de estudio, fondo oscuro y elegante..."
+                className="glass-input resize-none text-xs w-full bg-slate-950/60"
+                value={customStyle}
+                onChange={e => setCustomStyle(e.target.value)}
+              />
+            </div>
           </div>
         )}
 

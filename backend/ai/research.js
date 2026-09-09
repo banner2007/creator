@@ -310,14 +310,15 @@ router.post('/generate-angles', requireAuth, async (req, res) => {
       }
     }
 
-    const prompt = `Genera exactamente 5 ángulos de venta de alta conversión para el siguiente producto en formato JSON:
+    const prompt = `Genera la Estructura de Copy Universal de Alta Conversión (exactamente 5 ángulos y enfoques de venta) para el siguiente producto en formato JSON:
 ${productInfoText}
 
 Por favor, devuelve un objeto JSON con la clave "angles" que contenga un arreglo de exactamente 5 objetos. Cada objeto del arreglo debe tener los siguientes campos en español:
 1. "titulo": El titular persuasivo (Hook) corto del ángulo.
-2. "enfoque": El enfoque o beneficio principal (ej. Ahorro de tiempo, comodidad, calidad premium).
-3. "texto": El copy persuasivo o texto corto de 2-3 líneas para Facebook/Instagram/Landing.
+2. "enfoque": El enfoque o beneficio principal (ej. Ahorro de tiempo, comodidad, calidad premium, seguridad de pago).
+3. "texto": El copy persuasivo o texto estructurado de 2-3 líneas para la sección de la Landing Page.
 4. "cta": El texto sugerido para el botón de llamado a la acción.
+5. "contexto_visual": Descripción breve (1-2 frases) del entorno visual realista, profesional y comercial donde debe situarse este producto (ejemplo: "Mostrador elegante de tienda retail o cafetería moderna, ambiente de pago ágil y seguro, iluminación cálida de negocio activo").
 
 Responde únicamente con el objeto JSON válido. No incluyas explicaciones ni bloques de código markdown.`;
 

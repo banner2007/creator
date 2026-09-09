@@ -16,7 +16,8 @@ import {
       faq: 'Preguntas Frecuentes',
       cta: 'Imagen + Botón',
       gallery: 'Galería',
-      reviews: 'Testimonios'
+      reviews: 'Testimonios',
+      image: 'Imagen'
     };
     return map[type] || type;
   };
@@ -78,6 +79,7 @@ export default function BuilderPage() {
   // Left Panel control
   const [activeLeftTab, setActiveLeftTab] = useState('secciones'); // 'secciones' | 'fotos' | 'botones' | 'subidos' | 'capas' | 'css'
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true);
+  const [activeRightTab, setActiveRightTab] = useState('contenido'); // 'contenido' | 'estilo'
   
   // Active slot for image picking
   const [activeImageSlot, setActiveImageSlot] = useState(null); // { sectionIdx, field: 'coverImage' } or { sectionIdx, field: 'images', imageIdx: 0 }
@@ -687,13 +689,18 @@ export default function BuilderPage() {
                   <div className="grid grid-cols-2 gap-4">
                     {/* Card 1: Imagen */}
                     <button
-                      onClick={() => addSection('hero', {
-                        title: '',
-                        subtitle: '',
-                        ctaText: '',
-                        coverImage: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=800',
-                        badge: '',
-                        theme: 'light'
+                      onClick={() => addSection('image', {
+                        text: '',
+                        imageUrl: '',
+                        bgColor: 'transparent',
+                        textColor: '#000000',
+                        textSize: 16,
+                        align: 'center',
+                        bold: false,
+                        paddingY: 0,
+                        paddingX: 0,
+                        borderRadius: 0,
+                        shadow: 'none'
                       })}
                       className="flex flex-col items-center justify-center p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/5 hover:border-white/10 transition-all text-center group cursor-pointer aspect-square"
                     >
@@ -1096,6 +1103,45 @@ export default function BuilderPage() {
                       </span>
 
                       {/* Render visual layouts based on type */}
+                      {sec.type === 'image' && (
+                        <div 
+                          className="flex flex-col items-center justify-center w-full min-h-[400px] relative overflow-hidden"
+                          style={{
+                            backgroundColor: sec.content_json.bgColor || 'transparent',
+                            padding: `${sec.content_json.paddingY || 0}px ${sec.content_json.paddingX || 0}px`
+                          }}
+                        >
+                          {sec.content_json.imageUrl ? (
+                            <img 
+                              src={sec.content_json.imageUrl} 
+                              alt="Contenido" 
+                              className="w-full h-auto block" 
+                              style={{
+                                borderRadius: `${sec.content_json.borderRadius || 0}px`,
+                                boxShadow: sec.content_json.shadow === 'none' ? 'none' : sec.content_json.shadow === 'Fuerte' ? '0 25px 50px -12px rgba(0, 0, 0, 0.25)' : sec.content_json.shadow === 'Media' ? '0 10px 15px -3px rgba(0, 0, 0, 0.1)' : sec.content_json.shadow === 'Suave' ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none'
+                              }}
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center text-slate-400 w-full h-full min-h-[400px] bg-slate-50/50">
+                              <span className="text-3xl font-bold text-slate-300">Haz clic y sube tu imagen</span>
+                            </div>
+                          )}
+                          {sec.content_json.text && (
+                            <div 
+                              className="w-full mt-4"
+                              style={{
+                                color: sec.content_json.textColor || '#000000',
+                                fontSize: `${sec.content_json.textSize || 16}px`,
+                                textAlign: sec.content_json.align || 'center',
+                                fontWeight: sec.content_json.bold ? 'bold' : 'normal'
+                              }}
+                            >
+                              {sec.content_json.text}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {sec.type === 'hero' && (
                         sec.content_json.coverImage && !sec.content_json.title && !sec.content_json.subtitle ? (
                           <div className="relative bg-white overflow-hidden">
@@ -1333,6 +1379,181 @@ export default function BuilderPage() {
               </div>
 
               {/* DYNAMIC FORM COMPONENT INPUTS BY SECTION TYPE */}
+              {sections[activeSectionIdx].type === 'image' && (
+                <div className="space-y-4">
+                  {/* Tabs */}
+                  <div className="flex border-b border-white/10 mb-4">
+                    <button
+                      className={`flex-1 pb-2 text-xs font-bold transition-all ${activeRightTab === 'contenido' ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}
+                      onClick={() => setActiveRightTab('contenido')}
+                    >
+                      CONTENIDO
+                    </button>
+                    <button
+                      className={`flex-1 pb-2 text-xs font-bold transition-all ${activeRightTab === 'estilo' ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}
+                      onClick={() => setActiveRightTab('estilo')}
+                    >
+                      ESTILO
+                    </button>
+                  </div>
+
+                  {activeRightTab === 'contenido' && (
+                    <div className="space-y-5">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 tracking-wider">TEXTO</label>
+                        <textarea 
+                          className="glass-input text-xs resize-none h-24" 
+                          placeholder="Escribe el texto..."
+                          value={sections[activeSectionIdx].content_json.text || ''}
+                          onChange={e => updateSectionContent(activeSectionIdx, { text: e.target.value })}
+                        />
+                      </div>
+                      
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 tracking-wider">IMAGEN</label>
+                        <div 
+                          onClick={() => {
+                            setActiveImageSlot({ sectionIdx: activeSectionIdx, field: 'imageUrl' });
+                            setActiveLeftTab('fotos');
+                            setIsLeftPanelOpen(true);
+                          }}
+                          className={`p-6 border border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all ${
+                            activeImageSlot && activeImageSlot.sectionIdx === activeSectionIdx && activeImageSlot.field === 'imageUrl'
+                              ? 'border-purple-500 bg-purple-500/5'
+                              : 'border-white/10 hover:border-white/20 bg-white/[0.02]'
+                          }`}
+                        >
+                          <Upload className="w-6 h-6 text-slate-400 mb-2" />
+                          <span className="text-xs font-bold text-slate-200">Sube la imagen de tu producto</span>
+                          <span className="text-[10px] text-slate-500 mt-1">JPG, PNG o WebP (max 10MB)</span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 tracking-wider">O PEGAR URL</label>
+                        <input 
+                          type="text" 
+                          className="glass-input text-xs" 
+                          placeholder="https://..."
+                          value={sections[activeSectionIdx].content_json.imageUrl || ''}
+                          onChange={e => updateSectionContent(activeSectionIdx, { imageUrl: e.target.value })}
+                        />
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (confirm('¿Estás seguro de que deseas eliminar este elemento?')) {
+                            removeSection(activeSectionIdx);
+                            setActiveSectionIdx(null);
+                          }
+                        }}
+                        className="w-full mt-4 py-2 border border-red-500/30 text-red-400 rounded-xl text-xs font-bold hover:bg-red-500/10 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Eliminar elemento
+                      </button>
+                    </div>
+                  )}
+
+                  {activeRightTab === 'estilo' && (
+                    <div className="space-y-5">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[10px] font-bold text-slate-500 tracking-wider">PALETA DEL PRODUCTO</label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[
+                            { name: 'Primario', color: '#0F172A' },
+                            { name: 'Secundario', color: '#3B82F6' },
+                            { name: 'Acento', color: '#10B981' },
+                            { name: 'Extra', color: '#F59E0B' }
+                          ].map(c => (
+                            <div key={c.name} className="flex flex-col items-center gap-1 cursor-pointer">
+                              <div className="w-10 h-10 rounded-lg border border-white/10" style={{ backgroundColor: c.color }} title={c.name}></div>
+                              <span className="text-[8px] text-slate-400">{c.name}</span>
+                              <span className="text-[8px] text-slate-500 font-mono">{c.color}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 tracking-wider">COLOR DE FONDO</label>
+                        <div className="flex items-center gap-2">
+                          <input type="color" className="w-8 h-8 rounded cursor-pointer" value={sections[activeSectionIdx].content_json.bgColor === 'transparent' ? '#ffffff' : sections[activeSectionIdx].content_json.bgColor || '#ffffff'} onChange={e => updateSectionContent(activeSectionIdx, { bgColor: e.target.value })} />
+                          <input type="text" className="glass-input text-xs flex-1" value={sections[activeSectionIdx].content_json.bgColor || 'transparent'} onChange={e => updateSectionContent(activeSectionIdx, { bgColor: e.target.value })} />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 tracking-wider">COLOR DE TEXTO</label>
+                        <div className="flex items-center gap-2">
+                          <input type="color" className="w-8 h-8 rounded cursor-pointer" value={sections[activeSectionIdx].content_json.textColor || '#000000'} onChange={e => updateSectionContent(activeSectionIdx, { textColor: e.target.value })} />
+                          <input type="text" className="glass-input text-xs flex-1" value={sections[activeSectionIdx].content_json.textColor || '#000000'} onChange={e => updateSectionContent(activeSectionIdx, { textColor: e.target.value })} />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] font-bold text-slate-500 tracking-wider">TAMAÑO DE TEXTO</label>
+                          <span className="text-[10px] text-slate-400">{sections[activeSectionIdx].content_json.textSize || 16}px</span>
+                        </div>
+                        <input type="range" min="10" max="72" value={sections[activeSectionIdx].content_json.textSize || 16} onChange={e => updateSectionContent(activeSectionIdx, { textSize: parseInt(e.target.value) })} className="accent-emerald-400" />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 tracking-wider">ALINEACIÓN</label>
+                        <div className="flex gap-2">
+                          {['left', 'center', 'right'].map(align => (
+                            <button key={align} onClick={() => updateSectionContent(activeSectionIdx, { align })} className={`p-2 border rounded-lg flex-1 flex justify-center ${sections[activeSectionIdx].content_json.align === align ? 'border-emerald-400 bg-emerald-400/10 text-emerald-400' : 'border-white/10 text-slate-400'}`}>
+                              {align === 'left' ? '≡ L' : align === 'center' ? '≡ C' : '≡ R'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 tracking-wider">NEGRITA</label>
+                        <div className="flex gap-2">
+                          <button onClick={() => updateSectionContent(activeSectionIdx, { bold: false })} className={`px-4 py-1.5 border rounded-lg text-xs flex-1 ${!sections[activeSectionIdx].content_json.bold ? 'border-emerald-400 bg-emerald-400/10 text-emerald-400' : 'border-white/10 text-slate-400'}`}>Normal</button>
+                          <button onClick={() => updateSectionContent(activeSectionIdx, { bold: true })} className={`px-4 py-1.5 border rounded-lg text-xs font-bold flex-1 ${sections[activeSectionIdx].content_json.bold ? 'border-emerald-400 bg-emerald-400/10 text-emerald-400' : 'border-white/10 text-slate-400'}`}>B Bold</button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] font-bold text-slate-500 tracking-wider">ESPACIADO VERTICAL</label>
+                          <span className="text-[10px] text-slate-400">{sections[activeSectionIdx].content_json.paddingY || 0}px</span>
+                        </div>
+                        <input type="range" min="0" max="120" value={sections[activeSectionIdx].content_json.paddingY || 0} onChange={e => updateSectionContent(activeSectionIdx, { paddingY: parseInt(e.target.value) })} className="accent-emerald-400" />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] font-bold text-slate-500 tracking-wider">ESPACIADO HORIZONTAL</label>
+                          <span className="text-[10px] text-slate-400">{sections[activeSectionIdx].content_json.paddingX || 0}px</span>
+                        </div>
+                        <input type="range" min="0" max="120" value={sections[activeSectionIdx].content_json.paddingX || 0} onChange={e => updateSectionContent(activeSectionIdx, { paddingX: parseInt(e.target.value) })} className="accent-emerald-400" />
+                      </div>
+                      
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] font-bold text-slate-500 tracking-wider">BORDES REDONDEADOS</label>
+                          <span className="text-[10px] text-slate-400">{sections[activeSectionIdx].content_json.borderRadius || 0}px</span>
+                        </div>
+                        <input type="range" min="0" max="100" value={sections[activeSectionIdx].content_json.borderRadius || 0} onChange={e => updateSectionContent(activeSectionIdx, { borderRadius: parseInt(e.target.value) })} className="accent-emerald-400" />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 tracking-wider">SOMBRA</label>
+                        <div className="flex gap-2">
+                          {['Ninguna', 'Suave', 'Media', 'Fuerte'].map(s => (
+                            <button key={s} onClick={() => updateSectionContent(activeSectionIdx, { shadow: s })} className={`py-1.5 border rounded-lg text-[10px] flex-1 ${sections[activeSectionIdx].content_json.shadow === s || (s==='Ninguna' && !sections[activeSectionIdx].content_json.shadow) ? 'border-emerald-400 bg-emerald-400/10 text-emerald-400' : 'border-white/10 text-slate-400'}`}>{s}</button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               {sections[activeSectionIdx].type === 'hero' && (
                 <div className="space-y-4">
                   <div className="flex flex-col gap-1.5">

@@ -89,8 +89,10 @@ function cleanProductPrompt(rawPrompt) {
   const keys = [
     { name: 'product', patterns: [/product:/i] },
     { name: 'bgColor', patterns: [/background color:/i] },
+    { name: 'contextSetting', patterns: [/commercial setting \/ environment:/i, /realistic environment:/i] },
+    { name: 'copyStructure', patterns: [/copy structure to incorporate:/i, /sales angles to incorporate:/i] },
     { name: 'styleContext', patterns: [/style context:/i, /referencing selected/i] },
-    { name: 'extraStyle', patterns: [/additional style directions:/i, /style customization:/i] },
+    { name: 'extraStyle', patterns: [/block personalization info:/i, /additional style directions:/i, /style customization:/i] },
     { name: 'description', patterns: [/description:/i] }
   ];
 
@@ -130,8 +132,10 @@ function cleanProductPrompt(rawPrompt) {
   let cleanedParts = [];
   if (values.product) cleanedParts.push(values.product);
   if (values.bgColor) cleanedParts.push(`Background color: ${values.bgColor}`);
+  if (values.contextSetting) cleanedParts.push(`Realistic commercial environment: ${values.contextSetting}`);
+  if (values.copyStructure) cleanedParts.push(`Copy & Marketing structure: ${values.copyStructure}`);
   if (values.styleContext) cleanedParts.push(values.styleContext);
-  if (values.extraStyle) cleanedParts.push(`Style directions: ${values.extraStyle}`);
+  if (values.extraStyle) cleanedParts.push(`Design directions: ${values.extraStyle}`);
   
   if (cleanedParts.length === 0) {
     return rawPrompt.trim();
@@ -502,8 +506,7 @@ Transfer ONLY from IMAGE 2:
 - camera angle
 - lighting
 - reflections
-- atmosphere
-- background
+- atmospheric lighting quality
 - premium advertising style
 
 Never transfer:
@@ -513,6 +516,7 @@ Never transfer:
 - logo
 - colors
 - materials
+- incongruent environments (The environment, setting, and surfaces MUST make commercial sense for the REAL PRODUCT in IMAGE 1. Never put business/payment products on the floor, in a gym, or in absurd contexts).
 
 If conflict exists:
 IMAGE 1 wins.
@@ -593,17 +597,21 @@ You MUST analyze and replicate the following elements from the reference image:
 - camera angle and camera height
 - type, direction, and intensity of lighting
 - shadows, highlights, and reflections
-- color palette of the background and environment (do NOT apply these colors to the product itself)
-- background style (e.g., studio setup, outdoors, props, pedestals, fabrics, etc.)
-- overall mood and atmospheric aesthetic of the advertisement
 - typographical layout and empty/negative spacing if applicable
+
+CRITICAL CONTEXTUAL COHERENCE FOR THE PRODUCT:
+The setting, background, surfaces, and props MUST make commercial and realistic sense for the REAL PRODUCT being sold.
+For example:
+- If the real product is an electronic payment terminal, point of sale (POS) or datáfono, place it in a realistic business environment (such as a clean retail counter, restaurant cashier, boutique desk, or customer checkout surface). NEVER place electronic/business products on the floor, in a gym/fitness locker room, or in inappropriate environments simply because the reference image was set there.
+- Adapt the scene's surfaces and props so they logically match the utility, nature, and market of the real product, while strictly preserving the camera angle, framing, and lighting structure of the reference image.
 
 DO NOT copy, recreate, reinterpret, or transfer the following from the reference image:
 - the product/object shape or packaging
 - labels or logos
 - physical textures applied to the reference product
 - colors of the reference product
-- dimensions or materials of the reference product` : ''}
+- dimensions or materials of the reference product
+- out-of-context props that make no sense for the real product` : ''}
 
 STRICT PRODUCT PRESERVATION RULES (MANDATORY):
 Use the first attached image(s) (Image 1${productImages.length > 1 ? ` to Image ${productImages.length}` : ''}) as the exact, immutable product to appear in the final advertisement.

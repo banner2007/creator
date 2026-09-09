@@ -1,8 +1,11 @@
 # Dependencies
 node_modules/
+node_modules_old/
+node_modules_old2/
 /dist
 /.svelte-kit
 /build
+.firebase/
 
 # Logs
 npm-debug.log*

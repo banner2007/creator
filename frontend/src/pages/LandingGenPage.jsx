@@ -743,13 +743,13 @@ export default function LandingGenPage() {
           setSalesAngles(data.salesAngles || []);
           setSelectedAngles(data.selectedAngles || {});
 
-          // Restore generic creator settings
-          setSelectedTemplate(data.selectedTemplate || '');
-          setCustomImage(data.customImage || '');
-          setFormat(data.format || '16:9');
-          setLanguage(data.language || 'es');
-          setEngine(data.engine || 'kie-ai');
-          setCalidad(data.calidad || 'medio');
+          // Restore generic creator settings (prefixed to avoid collision with AdGenPage)
+          setSelectedTemplate(data.landing_selectedTemplate || data.selectedTemplate || '');
+          setCustomImage(data.landing_customImage || data.customImage || '');
+          setFormat(data.landing_format || data.format || '16:9');
+          setLanguage(data.landing_language || data.language || 'es');
+          setEngine(data.landing_engine || data.engine || 'kie-ai');
+          setCalidad(data.landing_calidad || data.calidad || 'medio');
 
           // Restore temporary registration details if it's a new product
           if (selectedProductForGen.id === 'new') {
@@ -823,13 +823,13 @@ export default function LandingGenPage() {
         salesAngles,
         selectedAngles,
 
-        // Generic creator settings
-        selectedTemplate,
-        customImage,
-        format,
-        language,
-        engine,
-        calidad,
+        // Generic creator settings (prefixed to avoid collision with AdGenPage)
+        landing_selectedTemplate: selectedTemplate,
+        landing_customImage: customImage,
+        landing_format: format,
+        landing_language: language,
+        landing_engine: engine,
+        landing_calidad: calidad,
 
         // Temporary registration details if it's a new product
         newProdName: selectedProductForGen.id === 'new' ? newProdName : '',
@@ -975,17 +975,27 @@ export default function LandingGenPage() {
       }
     }
 
-    // Incorporate selected sales angles directly into prompt
+    // Incorporate selected copy structure (angles & visual context) directly into prompt
     const selectedIndices = Object.keys(selectedAngles).filter(idx => selectedAngles[idx]);
     if (selectedIndices.length > 0 && salesAngles.length > 0) {
-      let anglesPromptPart = ' Sales angles to incorporate:';
+      let copyStructurePart = ' Copy structure to incorporate:';
+      let visualContexts = [];
       selectedIndices.forEach(idx => {
         const angle = salesAngles[idx];
         if (angle) {
-          anglesPromptPart += ` [Angle: ${angle.titulo} - ${angle.texto} (CTA: ${angle.cta})]`;
+          copyStructurePart += ` [Angle: ${angle.titulo} - ${angle.texto} (CTA: ${angle.cta})]`;
+          if (angle.contexto_visual) {
+            visualContexts.push(angle.contexto_visual);
+          }
         }
       });
-      promptText += anglesPromptPart;
+      promptText += copyStructurePart;
+
+      if (visualContexts.length > 0) {
+        promptText += ` Commercial setting / environment: ${visualContexts.join('. ')}. Ensure the setting, background, surfaces, and props make realistic commercial sense for this product (${currentProduct.name}), placing it in an authentic, natural business or consumer usage context rather than incongruent locations.`;
+      } else {
+        promptText += ` Commercial setting / environment: Ensure the setting, background, surfaces, and props make realistic commercial sense for this product (${currentProduct.name}), placing it in an authentic, natural business or consumer usage context rather than incongruent locations.`;
+      }
     }
 
     // Append metadata tag with product ID and template/category
@@ -1451,7 +1461,8 @@ export default function LandingGenPage() {
     );
   }
 
-  const hasSelectedAngle = Object.keys(selectedAngles).some(key => selectedAngles[key] === true);
+  const hasCopyStructure = salesAngles && salesAngles.length > 0;
+  const hasSelectedAngle = hasCopyStructure && Object.keys(selectedAngles).some(key => selectedAngles[key] === true);
 
   // VIEW 2: Landing Generation Detail (rendered when a product is selected)
   return (
@@ -1614,14 +1625,16 @@ export default function LandingGenPage() {
           </div>
         )}
 
-        {/* Sección: Generar Ángulos de Ventas con AI */}
+        {/* Sección: Estructura de Copy Universal de Alta Conversión */}
         <div className="p-5 rounded-2xl bg-purple-950/10 border border-purple-500/10 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-slate-200 font-extrabold text-[11px] uppercase tracking-wider">
               <BrainCircuit className="w-4 h-4 text-purple-400" />
-              <span>Generar Ángulo de Ventas con AI</span>
+              <span>Estructura de Copy Universal de Alta Conversión</span>
             </div>
-            <span className="text-[10px] text-slate-500 font-semibold tracking-wider">(Opcional)</span>
+            <span className="text-[10px] text-amber-400 font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+              Obligatorio para generar imágenes
+            </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1663,12 +1676,12 @@ export default function LandingGenPage() {
               {isGeneratingAngles ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Generando ángulos...</span>
+                  <span>Generando estructura de copy...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-3.5 h-3.5 text-purple-300 animate-pulse" />
-                  <span>Generar Ángulo de Ventas con AI (1 crédito)</span>
+                  <span>Generar Estructura de Copy Universal (1 crédito)</span>
                 </>
               )}
             </button>
@@ -1677,7 +1690,7 @@ export default function LandingGenPage() {
           {/* Render generated angles if available */}
           {salesAngles.length > 0 && (
             <div className="pt-4 border-t border-white/5 space-y-4">
-              <h4 className="text-xs font-bold text-slate-300">Selecciona los ángulos preferidos:</h4>
+              <h4 className="text-xs font-bold text-slate-300">Selecciona los ángulos preferidos (definirán el texto y contexto visual de las imágenes):</h4>
               <div className="space-y-3">
                 {salesAngles.map((angle, idx) => (
                   <div key={idx} className="flex items-start gap-3 p-3 rounded-xl bg-slate-950/40 border border-white/5 hover:border-white/10 transition-all">
@@ -1691,12 +1704,17 @@ export default function LandingGenPage() {
                       }}
                       className="mt-1 w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-white/10 bg-slate-900 cursor-pointer"
                     />
-                    <label htmlFor={`angle-check-${idx}`} className="flex-1 text-xs cursor-pointer select-none space-y-1">
+                    <label htmlFor={`angle-check-${idx}`} className="flex-1 text-xs cursor-pointer select-none space-y-1.5">
                       <div className="flex justify-between items-center">
                         <span className="font-extrabold text-purple-400">Ángulo {idx + 1}: {angle.titulo}</span>
                         <span className="px-1.5 py-0.5 text-[9px] bg-purple-950/50 text-purple-300 border border-purple-500/10 rounded uppercase font-bold tracking-wider">{angle.enfoque}</span>
                       </div>
                       <p className="text-slate-300 leading-relaxed">{angle.texto}</p>
+                      {angle.contexto_visual && (
+                        <div className="text-[11px] text-emerald-400/90 font-medium bg-emerald-950/30 border border-emerald-500/10 p-2 rounded-lg">
+                          <span className="font-bold text-emerald-300">Entorno visual coherente:</span> {angle.contexto_visual}
+                        </div>
+                      )}
                       {angle.cta && <div className="text-[10px] text-slate-500 font-bold">CTA Sugerido: <span className="text-slate-400">"{angle.cta}"</span></div>}
                     </label>
                   </div>
@@ -1718,7 +1736,7 @@ export default function LandingGenPage() {
                   ) : (
                     <>
                       <Check className="w-3.5 h-3.5 text-indigo-300" />
-                      <span>Guardar Ángulos Seleccionados en la Descripción</span>
+                      <span>Guardar Estructura de Copy en el Producto</span>
                     </>
                   )}
                 </button>
@@ -2248,7 +2266,7 @@ export default function LandingGenPage() {
           {!hasSelectedAngle && (
             <div className="pb-2">
               <p className="text-[11px] text-amber-400/90 font-medium bg-amber-500/5 border border-amber-500/10 py-2 px-4 rounded-xl inline-block">
-                ⚠️ Por favor genera y selecciona al menos un ángulo de ventas con IA más arriba para habilitar la generación.
+                ⚠️ Debes generar y seleccionar la 'Estructura de Copy Universal de Alta Conversión' más arriba para habilitar la generación de secciones.
               </p>
             </div>
           )}
