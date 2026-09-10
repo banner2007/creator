@@ -7,7 +7,7 @@ import {
   ChevronDown, X, Save, ArrowRight, Monitor, Smartphone, Layers,
   Image as ImageIcon, Sparkles, CheckCircle, Layout, LayoutGrid, Star,
   Search, ArrowLeft, Bold, Italic, Underline, Strikethrough, AlignLeft,
-  AlignCenter, AlignRight, AlignJustify, Link2, AlertTriangle, Check
+  AlignCenter, AlignRight, AlignJustify, Link2, AlertTriangle, Check, CloudLightning
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -168,6 +168,8 @@ export default function ConstructorPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
+  const [publishStatus, setPublishStatus] = useState('idle');
+
   const handleSave = useCallback(async () => {
     if (saveStatus === 'saving') return;
     setSaveStatus('saving');
@@ -175,6 +177,14 @@ export default function ConstructorPage() {
     setSaveStatus('saved');
     setTimeout(() => setSaveStatus('idle'), 2500);
   }, [saveStatus]);
+
+  const handlePublish = useCallback(async () => {
+    if (publishStatus === 'publishing') return;
+    setPublishStatus('publishing');
+    await new Promise(r => setTimeout(r, 1200));
+    setPublishStatus('published');
+    setTimeout(() => setPublishStatus('idle'), 3000);
+  }, [publishStatus]);
 
   const filteredTemplates = MOCK_TEMPLATES.filter(t =>
     galleryFilter === 'todas' ? true :
@@ -223,6 +233,7 @@ export default function ConstructorPage() {
           filteredTemplates={filteredTemplates} applyTemplate={applyTemplate}
           previewDevice={previewDevice} setPreviewDevice={setPreviewDevice}
           saveStatus={saveStatus} handleSave={handleSave}
+          publishStatus={publishStatus} handlePublish={handlePublish}
         />
       );
       default: return <PlaceholderView label={NAV_PRINCIPAL.concat(NAV_MARKETING, NAV_CONFIG).find(n => n.id === activeSection)?.label || activeSection} />;
@@ -861,7 +872,8 @@ function DesignerView({
   rows, addRow, updateRow, deleteRow, moveRowUp, moveRowDown,
   designStep, setDesignStep, galleryFilter, setGalleryFilter,
   filteredTemplates, applyTemplate, previewDevice, setPreviewDevice,
-  saveStatus, handleSave
+  saveStatus, handleSave,
+  publishStatus, handlePublish
 }) {
   const RowBlock = ({ row, index, total, onUpdate, onDelete, onMoveUp, onMoveDown }) => (
     <div className="group relative bg-gray-50 border border-gray-200 hover:border-teal-400/60 rounded-xl p-4 transition-all">
@@ -940,6 +952,14 @@ function DesignerView({
           <button onClick={handleSave} disabled={saveStatus === 'saving'} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white transition-all hover:opacity-90 shadow-sm" style={{ backgroundColor: ACCENT }}>
             {saveStatus === 'saving' ? <RefreshCcw className="w-4 h-4 animate-spin" /> : saveStatus === 'saved' ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
             {saveStatus === 'saving' ? 'Guardando...' : saveStatus === 'saved' ? 'Guardado' : 'Guardar'}
+          </button>
+          <button 
+            onClick={handlePublish} 
+            disabled={publishStatus === 'publishing'} 
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white transition-all hover:opacity-90 shadow-sm bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-purple-500/20 disabled:opacity-50"
+          >
+            {publishStatus === 'publishing' ? <RefreshCcw className="w-4 h-4 animate-spin" /> : publishStatus === 'published' ? <CheckCircle className="w-4 h-4" /> : <CloudLightning className="w-4 h-4" />}
+            {publishStatus === 'publishing' ? 'Publicando...' : publishStatus === 'published' ? 'Publicado' : 'Publicar'}
           </button>
         </div>
       </div>

@@ -88,7 +88,13 @@ export const useStore = create((set, get) => ({
     }
   })(),
   landings: [],
-  selectedLanding: null,
+  selectedLanding: (() => {
+    try {
+      return JSON.parse(localStorage.getItem('selectedLanding')) || null;
+    } catch {
+      return null;
+    }
+  })(),
   sections: [], // Active landing page sections
   products: [],
   firebaseTemplates: [],
@@ -253,10 +259,12 @@ export const useStore = create((set, get) => ({
 
   selectLanding: async (landing) => {
     if (!landing) {
+      try { localStorage.removeItem('selectedLanding'); } catch {}
       set({ selectedLanding: null, sections: [] });
       return;
     }
     
+    try { localStorage.setItem('selectedLanding', JSON.stringify(landing)); } catch {}
     set({ selectedLanding: landing, saveStatus: 'idle' });
     try {
       const response = await fetch(`/api/landing/${landing.id}`, {
@@ -385,6 +393,46 @@ export const useStore = create((set, get) => ({
     }, 1500); // Debounce save for 1.5 seconds
 
     set({ autosaveTimer: timer });
+  },
+
+  saveLanding: async () => {
+    if (get().autosaveTimer) {
+      clearTimeout(get().autosaveTimer);
+      set({ autosaveTimer: null });
+    }
+    const landing = get().selectedLanding;
+    if (!landing) return false;
+
+    set({ saveStatus: 'saving' });
+    try {
+      const response = await fetch(`/api/landing/${landing.id}`, {
+        method: 'PUT',
+        headers: getHeaders(get().token),
+        body: JSON.stringify({
+          sections: get().sections,
+          title: landing.title,
+          slug: landing.slug,
+          lazy_load: landing.lazy_load !== undefined ? landing.lazy_load : true,
+          masking: landing.masking !== undefined ? landing.masking : false,
+          custom_css: landing.custom_css || ''
+        })
+      });
+
+      if (response.ok) {
+        set({ saveStatus: 'saved' });
+        setTimeout(() => {
+          if (get().saveStatus === 'saved') set({ saveStatus: 'idle' });
+        }, 2500);
+        return true;
+      } else {
+        set({ saveStatus: 'error' });
+        return false;
+      }
+    } catch (err) {
+      console.error('Manual save failed:', err);
+      set({ saveStatus: 'error' });
+      return false;
+    }
   },
 
   updateLandingMeta: (fields) => {

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ArrowUp, ArrowDown, Trash2, Plus, Monitor, Tablet, Smartphone, 
   Sparkles, Globe, CloudLightning, Eye, ArrowLeft, RefreshCw, CheckCircle, Image as ImageIcon,
-  Sliders, Layers, MousePointer, Upload, FolderTree, Code, Shield, ShieldOff, Zap, X, PlusCircle, Star, Copy, ExternalLink
+  Sliders, Layers, MousePointer, Upload, FolderTree, Code, Shield, ShieldOff, Zap, X, PlusCircle, Star, Copy, ExternalLink, Save
 } from 'lucide-react';
 
   const getSectionTypeNameSpanish = (type) => {
@@ -65,6 +65,9 @@ export default function BuilderPage() {
     setPreviewMode,
     setActiveSectionIdx,
     publishLanding,
+    saveLanding,
+    landings,
+    selectLanding,
     fetchProjectImages,
     updateLandingMeta,
     uploadProjectAsset,
@@ -134,13 +137,18 @@ export default function BuilderPage() {
 
   useEffect(() => {
     if (!selectedLanding) {
+      // If we have landings loaded, try to auto-select the first one
+      if (landings && landings.length > 0) {
+        selectLanding(landings[0]);
+        return;
+      }
       navigate('/');
     } else if (selectedProject) {
       fetchProjectImages(selectedProject.id);
       setSeoTitle(selectedLanding.seo_title || '');
       setSeoDesc(selectedLanding.seo_description || '');
     }
-  }, [selectedLanding]);
+  }, [selectedLanding, landings]);
 
   if (!selectedLanding) return null;
 
@@ -410,29 +418,57 @@ export default function BuilderPage() {
         </div>
 
         {/* Right Section: SEO, Guardar, Publicar */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button 
             onClick={() => setSeoModal(true)}
             className="px-3 py-2 rounded-xl border border-purple-500/30 text-purple-300 text-xs font-semibold bg-purple-600/5 hover:bg-purple-600/15 transition-all flex items-center gap-1.5"
+            title="Optimización SEO y Metadatos"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span className="hidden lg:inline">Asistente SEO</span>
           </button>
 
+          {/* Botón Guardar */}
           <button 
-            onClick={handleManualSave}
-            className="px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-all"
+            onClick={async () => {
+              if (saveStatus === 'saving') return;
+              if (saveLanding) {
+                await saveLanding();
+              } else {
+                handleManualSave();
+              }
+            }}
+            disabled={saveStatus === 'saving'}
+            className={`px-3.5 sm:px-4 py-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 shadow-sm ${
+              saveStatus === 'saved'
+                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                : saveStatus === 'saving'
+                ? 'border-purple-500/40 bg-purple-500/10 text-purple-300'
+                : 'border-white/15 bg-white/10 hover:bg-white/15 text-white hover:border-white/30'
+            }`}
+            title="Guardar cambios de la landing page"
           >
-            Guardar
+            {saveStatus === 'saving' ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-400" />
+            ) : saveStatus === 'saved' ? (
+              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+            ) : (
+              <Save className="w-3.5 h-3.5 text-slate-300" />
+            )}
+            <span>
+              {saveStatus === 'saving' ? 'Guardando...' : saveStatus === 'saved' ? 'Guardado' : 'Guardar'}
+            </span>
           </button>
 
+          {/* Botón Publicar */}
           <button 
             onClick={handlePublish}
             disabled={publishing}
-            className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-semibold text-white transition-all shadow-lg shadow-purple-500/25 flex items-center gap-1.5 disabled:opacity-50"
+            className="px-4 sm:px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-xs font-bold text-white transition-all shadow-lg shadow-purple-600/30 flex items-center gap-1.5 sm:gap-2 disabled:opacity-50 active:scale-95"
+            title="Publicar landing page en vivo"
           >
             {publishing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CloudLightning className="w-3.5 h-3.5" />}
-            <span>Publicar</span>
+            <span>{publishing ? 'Publicando...' : 'Publicar'}</span>
           </button>
         </div>
       </header>
