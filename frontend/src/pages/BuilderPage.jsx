@@ -56,6 +56,7 @@ export default function BuilderPage() {
     previewMode,
     activeSectionIdx,
     saveStatus,
+    lastSaveError,
     generatedImages,
     setSections,
     updateSectionContent,
@@ -338,7 +339,10 @@ export default function BuilderPage() {
               />
               
               {/* Autosave Status Indicator */}
-              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              <div 
+                className={`flex items-center gap-1.5 text-xs ${saveStatus === 'error' ? 'text-red-400 bg-red-500/10 px-2 py-0.5 rounded-lg border border-red-500/20' : 'text-slate-500'}`}
+                title={saveStatus === 'error' && lastSaveError ? `Error al guardar: ${lastSaveError}` : undefined}
+              >
                 {saveStatus === 'saving' && (
                   <RefreshCw className="w-3 h-3 text-purple-400 animate-spin" />
                 )}
@@ -349,7 +353,7 @@ export default function BuilderPage() {
                   <X className="w-3 h-3 text-red-500" />
                 )}
                 <span className="text-[10px] hidden lg:inline capitalize">
-                  {saveStatus === 'saving' ? 'Guardando...' : saveStatus === 'saved' ? 'Guardado' : 'Error'}
+                  {saveStatus === 'saving' ? 'Guardando...' : saveStatus === 'saved' ? 'Guardado' : (lastSaveError ? `Error: ${lastSaveError}` : 'Error')}
                 </span>
               </div>
             </div>

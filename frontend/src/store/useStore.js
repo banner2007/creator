@@ -105,6 +105,10 @@ export const useStore = create((set, get) => ({
   selectedProduct: null,
   isResearching: false,
   
+  // Save status & error
+  saveStatus: 'idle',
+  lastSaveError: null,
+  
   // AI state
   generatedImages: [],
   isGeneratingImages: false,
@@ -382,13 +386,15 @@ export const useStore = create((set, get) => ({
         });
 
         if (response.ok) {
-          set({ saveStatus: 'saved' });
+          set({ saveStatus: 'saved', lastSaveError: null });
         } else {
-          set({ saveStatus: 'error' });
+          const errData = await response.json().catch(() => ({}));
+          console.error('[Autosave Error]', response.status, errData);
+          set({ saveStatus: 'error', lastSaveError: errData.error || `Error ${response.status}` });
         }
       } catch (err) {
         console.error('Autosave failed:', err);
-        set({ saveStatus: 'error' });
+        set({ saveStatus: 'error', lastSaveError: err.message || 'Error de conexión' });
       }
     }, 1500); // Debounce save for 1.5 seconds
 
@@ -403,7 +409,7 @@ export const useStore = create((set, get) => ({
     const landing = get().selectedLanding;
     if (!landing) return false;
 
-    set({ saveStatus: 'saving' });
+    set({ saveStatus: 'saving', lastSaveError: null });
     try {
       const response = await fetch(`/api/landing/${landing.id}`, {
         method: 'PUT',
@@ -419,18 +425,20 @@ export const useStore = create((set, get) => ({
       });
 
       if (response.ok) {
-        set({ saveStatus: 'saved' });
+        set({ saveStatus: 'saved', lastSaveError: null });
         setTimeout(() => {
           if (get().saveStatus === 'saved') set({ saveStatus: 'idle' });
         }, 2500);
         return true;
       } else {
-        set({ saveStatus: 'error' });
+        const errData = await response.json().catch(() => ({}));
+        console.error('[SaveLanding Error]', response.status, errData);
+        set({ saveStatus: 'error', lastSaveError: errData.error || `Error ${response.status}` });
         return false;
       }
     } catch (err) {
       console.error('Manual save failed:', err);
-      set({ saveStatus: 'error' });
+      set({ saveStatus: 'error', lastSaveError: err.message || 'Error de conexión' });
       return false;
     }
   },
