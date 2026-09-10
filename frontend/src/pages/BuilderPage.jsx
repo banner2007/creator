@@ -831,16 +831,37 @@ export default function BuilderPage() {
                             className={`aspect-square rounded-lg overflow-hidden border bg-slate-950 cursor-pointer relative group transition-all ${
                               activeImageSlot ? 'border-purple-500 scale-102 ring-2 ring-purple-500/30' : 'border-white/10 hover:border-purple-500/50'
                             }`}
-                            title={activeImageSlot ? 'Haga clic para aplicar esta imagen al bloque' : 'Haga clic para agregar esta imagen a la pizarra (0 margen)'}
+                            title={activeImageSlot ? 'Haga clic para aplicar esta imagen al bloque' : 'Haga clic para agregar esta imagen a la pizarra'}
                           >
                             <img src={img.image_url} alt="" className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center p-1 text-center transition-all">
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
                               {activeImageSlot ? (
                                 <CheckCircle className="w-5 h-5 text-purple-400" />
                               ) : (
-                                <span className="text-[9px] font-bold text-white bg-purple-600/90 px-1.5 py-0.5 rounded shadow">
-                                  + Pizarra
-                                </span>
+                                <div className="flex gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      handleSelectAsset(img.image_url); 
+                                    }}
+                                    className="p-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 border border-purple-400/30 text-white shadow-lg flex items-center justify-center active:scale-95 transition-all"
+                                    title="Agregar a la pizarra"
+                                  >
+                                    <Plus className="w-4 h-4 stroke-[3]" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      if (confirm('¿Eliminar esta imagen de los assets?')) deleteProjectImage(img.id); 
+                                    }}
+                                    className="p-1.5 rounded-lg bg-red-950/80 border border-red-900/30 text-red-400 hover:text-red-300 flex items-center justify-center active:scale-95 transition-all"
+                                    title="Eliminar"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -984,22 +1005,28 @@ export default function BuilderPage() {
                               {activeImageSlot ? (
                                 <CheckCircle className="w-4 h-4 text-purple-400" />
                               ) : (
-                                <div className="flex gap-1">
+                                <div className="flex gap-1.5">
                                   <button
                                     type="button"
-                                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(img.image_url); alert('Enlace de la imagen copiado'); }}
-                                    className="p-1 rounded bg-slate-900 border border-white/15 text-slate-300 hover:text-white"
-                                    title="Copiar enlace"
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      handleSelectAsset(img.image_url); 
+                                    }}
+                                    className="p-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 border border-purple-400/30 text-white shadow-lg flex items-center justify-center active:scale-95 transition-all"
+                                    title="Agregar a la pizarra"
                                   >
-                                    <Copy className="w-3 h-3" />
+                                    <Plus className="w-4 h-4 stroke-[3]" />
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={(e) => { e.stopPropagation(); if (confirm('¿Eliminar esta imagen de los assets?')) deleteProjectImage(img.id); }}
-                                    className="p-1 rounded bg-red-950/80 border border-red-900/30 text-red-400 hover:text-red-300"
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      if (confirm('¿Eliminar esta imagen de los assets?')) deleteProjectImage(img.id); 
+                                    }}
+                                    className="p-1.5 rounded-lg bg-red-950/80 border border-red-900/30 text-red-400 hover:text-red-300 flex items-center justify-center active:scale-95 transition-all"
                                     title="Eliminar"
                                   >
-                                    <Trash2 className="w-3 h-3" />
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>
                               )}
