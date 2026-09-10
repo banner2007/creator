@@ -180,7 +180,7 @@ function renderSection(section) {
     case 'gallery':
       const images = content.images || [];
       return `
-        <section class="py-0 bg-white border-b border-slate-100" style="margin: 0; line-height: 0;">
+        <section class="py-0 bg-white" style="margin: 0; line-height: 0;">
           <div class="w-full">
             <div class="grid grid-cols-1 gap-0">
               ${images.filter(img => img).map(img => `

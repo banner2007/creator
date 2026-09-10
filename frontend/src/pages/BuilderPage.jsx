@@ -198,14 +198,31 @@ export default function BuilderPage() {
     setSeoModal(false);
   };
 
-  // Handle local image file upload
+  // Handle local image file upload (multiple files supported without limits)
   const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
     setIsUploading(true);
     try {
-      await uploadProjectAsset(selectedProject.id, file);
-      // Switch to Fotos panel to see it
+      for (const file of files) {
+        const uploaded = await uploadProjectAsset(selectedProject.id, file);
+        // Automatically append to the board as an image block with 0 margin
+        if (uploaded && uploaded.image_url) {
+          addSection('image', {
+            text: '',
+            imageUrl: uploaded.image_url,
+            bgColor: 'transparent',
+            textColor: '#000000',
+            textSize: 16,
+            align: 'center',
+            bold: false,
+            paddingY: 0,
+            paddingX: 0,
+            borderRadius: 0,
+            shadow: 'none'
+          });
+        }
+      }
       setActiveLeftTab('fotos');
     } catch (err) {
       console.error('[Upload] Error uploading asset:', err);
@@ -215,18 +232,31 @@ export default function BuilderPage() {
     }
   };
 
-  // Image select handler
+  // Image select handler: apply to active slot or append as a new image section to the board
   const handleSelectAsset = (url) => {
     if (!activeImageSlot) {
-      // Just copy to clipboard as feedback
-      navigator.clipboard.writeText(url);
-      alert('Enlace de la imagen copiado al portapapeles');
+      // Append directly to the canvas/pizarra as an image section with 0 margin
+      addSection('image', {
+        text: '',
+        imageUrl: url,
+        bgColor: 'transparent',
+        textColor: '#000000',
+        textSize: 16,
+        align: 'center',
+        bold: false,
+        paddingY: 0,
+        paddingX: 0,
+        borderRadius: 0,
+        shadow: 'none'
+      });
       return;
     }
 
     const { sectionIdx, field, imageIdx } = activeImageSlot;
     if (field === 'coverImage') {
       updateSectionContent(sectionIdx, { coverImage: url });
+    } else if (field === 'imageUrl') {
+      updateSectionContent(sectionIdx, { imageUrl: url, paddingY: 0, paddingX: 0 });
     } else if (field === 'images' && imageIdx !== undefined) {
       const section = sections[sectionIdx];
       const list = [...(section.content_json.images || [])];
@@ -775,6 +805,49 @@ export default function BuilderPage() {
                       <span className="text-[10px] text-slate-500 mt-1">Texto sobre color</span>
                     </button>
                   </div>
+
+                  {/* Quick Project Images Gallery in Fotos Panel */}
+                  <div className="space-y-3 pt-4 border-t border-white/5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 block">Fotos del Proyecto</span>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-[10px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" /> Subir fotos
+                      </button>
+                    </div>
+                    {generatedImages.length === 0 ? (
+                      <div className="p-4 rounded-xl border border-dashed border-white/10 text-center text-xs text-slate-500">
+                        No hay imágenes en este proyecto. Puedes subir fotos desde el botón superior o la pestaña "Subidos".
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2">
+                        {generatedImages.map(img => (
+                          <div 
+                            key={img.id}
+                            onClick={() => handleSelectAsset(img.image_url)}
+                            className={`aspect-square rounded-lg overflow-hidden border bg-slate-950 cursor-pointer relative group transition-all ${
+                              activeImageSlot ? 'border-purple-500 scale-102 ring-2 ring-purple-500/30' : 'border-white/10 hover:border-purple-500/50'
+                            }`}
+                            title={activeImageSlot ? 'Haga clic para aplicar esta imagen al bloque' : 'Haga clic para agregar esta imagen a la pizarra (0 margen)'}
+                          >
+                            <img src={img.image_url} alt="" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center p-1 text-center transition-all">
+                              {activeImageSlot ? (
+                                <CheckCircle className="w-5 h-5 text-purple-400" />
+                              ) : (
+                                <span className="text-[9px] font-bold text-white bg-purple-600/90 px-1.5 py-0.5 rounded shadow">
+                                  + Pizarra
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -872,6 +945,7 @@ export default function BuilderPage() {
                       ref={fileInputRef} 
                       className="hidden" 
                       accept="image/*" 
+                      multiple
                       onChange={handleFileUpload} 
                     />
                     
@@ -883,9 +957,9 @@ export default function BuilderPage() {
                     
                     <div>
                       <p className="text-xs font-semibold text-slate-300">
-                        {isUploading ? 'Subiendo archivo...' : 'Selecciona una foto'}
+                        {isUploading ? 'Subiendo archivos...' : 'Selecciona o arrastra fotos'}
                       </p>
-                      <p className="text-[10px] text-slate-500 mt-1">Soporta PNG, JPG, WEBP de hasta 5MB</p>
+                      <p className="text-[10px] text-slate-500 mt-1">Sube tantas fotos como desees (PNG, JPG, WEBP)</p>
                     </div>
                   </div>
 
@@ -903,7 +977,7 @@ export default function BuilderPage() {
                             className={`aspect-square rounded-lg overflow-hidden border bg-slate-950 cursor-pointer relative group transition-all ${
                               activeImageSlot ? 'border-purple-500 scale-102' : 'border-white/10 hover:border-white/20'
                             }`}
-                            title={activeImageSlot ? 'Haga clic para aplicar esta imagen' : 'Haga clic para copiar el enlace'}
+                            title={activeImageSlot ? 'Haga clic para aplicar esta imagen al bloque activo' : 'Haga clic para agregar esta imagen a la pizarra'}
                           >
                             <img src={img.image_url} alt="" className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
@@ -1026,7 +1100,7 @@ export default function BuilderPage() {
               >
                 {/* Simulated published mobile view bounds inside desktop viewport */}
                 <div 
-                  className={`w-full divide-y divide-slate-100 bg-white pointer-events-none relative pb-24 shadow-xl border border-slate-200/50 ${
+                  className={`w-full bg-white pointer-events-none relative pb-24 shadow-xl ${
                     previewMode === 'desktop' ? 'max-w-[480px] rounded-2xl overflow-hidden' : ''
                   } ${
                     selectedLanding.masking ? 'select-none' : ''
@@ -1065,14 +1139,14 @@ export default function BuilderPage() {
                         setDraggedIdx(null);
                         setDragOverIdx(null);
                       }}
-                      className={`relative group border-2 transition-all pointer-events-auto cursor-grab active:cursor-grabbing ${
+                      className={`relative group transition-all pointer-events-auto cursor-grab active:cursor-grabbing ${
                         draggedIdx === idx 
-                          ? 'opacity-30 scale-95 border-purple-500/30' 
+                          ? 'opacity-30 scale-95 ring-2 ring-purple-500/30' 
                           : dragOverIdx === idx 
-                            ? 'border-dashed border-purple-500 bg-purple-500/[0.03] scale-[1.01] shadow-xl z-20' 
+                            ? 'ring-2 ring-dashed ring-purple-500 bg-purple-500/[0.03] scale-[1.01] shadow-xl z-20' 
                             : activeSectionIdx === idx 
-                              ? 'border-emerald-500 z-10' 
-                              : 'border-transparent hover:border-purple-500/40'
+                              ? 'ring-2 ring-emerald-500 z-10' 
+                              : 'hover:ring-2 hover:ring-purple-500/40'
                       }`}
                     >
                       {/* Floating Section Toolbar */}
@@ -1141,10 +1215,14 @@ export default function BuilderPage() {
                       {/* Render visual layouts based on type */}
                       {sec.type === 'image' && (
                         <div 
-                          className="flex flex-col items-center justify-center w-full min-h-[400px] relative overflow-hidden"
+                          className={`flex flex-col items-center justify-center w-full relative overflow-hidden ${
+                            sec.content_json.imageUrl ? 'min-h-0 leading-none' : 'min-h-[400px]'
+                          }`}
                           style={{
                             backgroundColor: sec.content_json.bgColor || 'transparent',
-                            padding: `${sec.content_json.paddingY || 0}px ${sec.content_json.paddingX || 0}px`
+                            padding: `${sec.content_json.paddingY || 0}px ${sec.content_json.paddingX || 0}px`,
+                            margin: 0,
+                            lineHeight: 0
                           }}
                         >
                           {sec.content_json.imageUrl ? (
@@ -1153,6 +1231,9 @@ export default function BuilderPage() {
                               alt="Contenido" 
                               className="w-full h-auto block" 
                               style={{
+                                display: 'block',
+                                margin: 0,
+                                padding: 0,
                                 borderRadius: `${sec.content_json.borderRadius || 0}px`,
                                 boxShadow: sec.content_json.shadow === 'none' ? 'none' : sec.content_json.shadow === 'Fuerte' ? '0 25px 50px -12px rgba(0, 0, 0, 0.25)' : sec.content_json.shadow === 'Media' ? '0 10px 15px -3px rgba(0, 0, 0, 0.1)' : sec.content_json.shadow === 'Suave' ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none'
                               }}
@@ -1169,7 +1250,8 @@ export default function BuilderPage() {
                                 color: sec.content_json.textColor || '#000000',
                                 fontSize: `${sec.content_json.textSize || 16}px`,
                                 textAlign: sec.content_json.align || 'center',
-                                fontWeight: sec.content_json.bold ? 'bold' : 'normal'
+                                fontWeight: sec.content_json.bold ? 'bold' : 'normal',
+                                lineHeight: '1.5'
                               }}
                             >
                               {sec.content_json.text}
@@ -1180,8 +1262,8 @@ export default function BuilderPage() {
 
                       {sec.type === 'hero' && (
                         sec.content_json.coverImage && !sec.content_json.title && !sec.content_json.subtitle ? (
-                          <div className="relative bg-white overflow-hidden">
-                            <img src={sec.content_json.coverImage} alt="Hero Banner" className="w-full h-auto block" />
+                          <div className="relative bg-white overflow-hidden" style={{ margin: 0, lineHeight: 0 }}>
+                            <img src={sec.content_json.coverImage} alt="Hero Banner" className="w-full h-auto block" style={{ display: 'block', margin: 0 }} />
                           </div>
                         ) : (
                           <div 
@@ -1316,15 +1398,15 @@ export default function BuilderPage() {
                       )}
 
                       {sec.type === 'gallery' && (
-                        <div className="py-0 bg-white border-b border-slate-100">
-                          <div className="grid grid-cols-1 gap-0 max-w-md mx-auto">
+                        <div className="py-0 bg-white" style={{ margin: 0, lineHeight: 0 }}>
+                          <div className="grid grid-cols-1 gap-0 max-w-md mx-auto" style={{ margin: 0, lineHeight: 0 }}>
                             {(sec.content_json.images || []).map((img, i) => 
                               img ? (
-                                <div key={i} className="bg-white overflow-hidden">
-                                  <img src={img} alt="" className="w-full h-auto block" />
+                                <div key={i} className="bg-white overflow-hidden" style={{ margin: 0, lineHeight: 0 }}>
+                                  <img src={img} alt="" className="w-full h-auto block" style={{ display: 'block', margin: 0, padding: 0 }} />
                                 </div>
                               ) : (
-                                <div key={i} className="p-6 border border-dashed border-slate-200 m-2 rounded-xl flex items-center justify-center text-slate-400 bg-slate-50 text-xs">
+                                <div key={i} className="p-6 border border-dashed border-slate-200 m-2 rounded-xl flex items-center justify-center text-slate-400 bg-slate-50 text-xs" style={{ lineHeight: 'normal' }}>
                                   <ImageIcon className="w-5 h-5 mr-1" />
                                   <span>Slot de imagen vacío ({i + 1})</span>
                                 </div>
